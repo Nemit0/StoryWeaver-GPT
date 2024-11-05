@@ -1,3 +1,7 @@
 pandas
 numpy
-pytorch
+tqdm
+matplotlib
+torch
+torchvision
+torchaudio
