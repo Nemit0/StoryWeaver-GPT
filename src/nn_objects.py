@@ -9,6 +9,12 @@ if torch.cuda.is_available():
 else:
     torch.set_default_device('cpu')
 
+def one_hot_encode(labels: Tensor, num_classes: int) -> Tensor:
+    batch_size = labels.shape[0]
+    y_one_hot = torch.zeros(batch_size, num_classes, device=labels.device)
+    y_one_hot[torch.arange(batch_size), labels] = 1
+    return y_one_hot
+
 ### LOSS FUNCTIONS ###
 class Loss(abc.ABC):
     @abc.abstractmethod
@@ -35,17 +41,22 @@ class MeanSquaredError(Loss):
 
 class CrossEntropyLoss(Loss):
     def __call__(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        # Apply softmax to get probabilities
-        y_pred = torch.log_softmax(y_pred, dim=1)
-        return -torch.sum(y_pred[range(y_true.shape[0]), y_true]) / y_true.shape[0]
+        # Apply log_softmax to the predictions
+        y_pred_log_softmax = torch.log_softmax(y_pred, dim=1)
+        # Compute the cross-entropy loss
+        loss = -torch.mean(torch.sum(y_true * y_pred_log_softmax, dim=1))
+        return loss
 
     def __str__(self) -> str:
         return "CrossEntropyLoss"
 
     def gradient(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        y_pred = torch.softmax(y_pred, dim=1)
-        y_pred[range(y_true.shape[0]), y_true] -= 1
-        return y_pred / y_true.shape[0]
+        # Apply softmax to the predictions
+        y_pred_softmax = torch.softmax(y_pred, dim=1)
+        # Compute the gradient
+        grad = (y_pred_softmax - y_true) / y_true.shape[0]
+        return grad
+
 
 ### ACTIVATION FUNCTIONS ###
 class Activation(abc.ABC):
