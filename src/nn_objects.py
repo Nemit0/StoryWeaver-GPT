@@ -9,11 +9,18 @@ if torch.cuda.is_available():
 else:
     torch.set_default_device('cpu')
 
-def one_hot_encode(labels: Tensor, num_classes: int) -> Tensor:
-    batch_size = labels.shape[0]
-    y_one_hot = torch.zeros(batch_size, num_classes, device=labels.device)
-    y_one_hot[torch.arange(batch_size), labels] = 1
-    return y_one_hot
+### Helper Classes and Functions ###
+class OneHotEncoder:
+    def __init__(self, num_classes: int, data: Tensor) -> None:
+        self.num_classes: int = num_classes
+        self.token_map: Dict[any, int] = {token: i for i, token in enumerate(data.unique())}
+        self.inv_map: Dict[int, any] = {v : k for k,v in self.token_map}
+    
+    def encode(self, data: Tensor) -> Tensor:
+        encoded = torch.zeros(data.shape[0], self.num_classes)
+        for i, token in enumerate(data):
+            encoded[i][self.token_map[token]] = 1
+        return encoded
 
 ### LOSS FUNCTIONS ###
 class Loss(abc.ABC):
@@ -41,22 +48,16 @@ class MeanSquaredError(Loss):
 
 class CrossEntropyLoss(Loss):
     def __call__(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        # Apply log_softmax to the predictions
-        y_pred_log_softmax = torch.log_softmax(y_pred, dim=1)
-        # Compute the cross-entropy loss
-        loss = -torch.mean(torch.sum(y_true * y_pred_log_softmax, dim=1))
-        return loss
+        y_pred = torch.log_softmax(y_pred, dim=1)
+        return -torch.sum(y_pred[range(y_true.shape[0]), y_true]) / y_true.shape[0]
 
     def __str__(self) -> str:
         return "CrossEntropyLoss"
 
     def gradient(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        # Apply softmax to the predictions
-        y_pred_softmax = torch.softmax(y_pred, dim=1)
-        # Compute the gradient
-        grad = (y_pred_softmax - y_true) / y_true.shape[0]
-        return grad
-
+        y_pred = torch.softmax(y_pred, dim=1)
+        y_pred[range(y_true.shape[0]), y_true] -= 1
+        return y_pred / y_true.shape[0]
 
 ### ACTIVATION FUNCTIONS ###
 class Activation(abc.ABC):
@@ -190,7 +191,7 @@ class Layer:
 
 class NeuralNetwork:
     def __init__(self,
-                 layer_sizes: list,
+                 layer_sizes: list[int],
                  activation: Activation = Sigmoid(),
                  output_activation: Activation = None,
                  loss: Loss = MeanSquaredError(),
@@ -245,7 +246,7 @@ class NeuralNetwork:
             history['loss'][epoch] = epoch_loss / (num_samples // batch_size)
         return history
 
-    def __repr__(self):
+    def __str__(self):
         return f"NeuralNetwork(layer_sizes={self.layer_sizes})\nActivation: {self.activation}"
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .data
 .test.py
+.loss.png
 # C extensions
 *.so
 
