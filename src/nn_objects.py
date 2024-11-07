@@ -93,6 +93,27 @@ class ReLU(Activation):
     def gradient(self, x: Tensor) -> Tensor:
         return (x > 0).float()
 
+class Softmax(Activation):
+    def __call__(self, x: Tensor) -> Tensor:
+        exps = torch.exp(x - torch.max(x, axis=1, keepdim=True).values)
+        return exps / torch.sum(exps, axis=1, keepdim=True)
+
+    def __str__(self) -> str:
+        return "Softmax"
+
+    def gradient(self, x: Tensor) -> Tensor:
+        return self.__call__(x) * (1 - self.__call__(x))
+
+class Linear(Activation):
+    def __call__(self, x: Tensor) -> Tensor:
+        return x
+
+    def __str__(self) -> str:
+        return "Linear"
+
+    def gradient(self, x: Tensor) -> Tensor:
+        return torch.ones_like(x)
+
 ### OPTIMIZERS ###
 class Optimizer(abc.ABC):
     @abc.abstractmethod
@@ -109,6 +130,9 @@ class SimpleGradientDescent(Optimizer):
             layer.biases -= self.lr * layer.grad_biases
 
 class GradientDescentWithMomentum(Optimizer):
+    """
+    Generated with Chatgpt for optimizer implementation example
+    """
     def __init__(self, lr: float, momentum: float = 0.9):
         self.lr: float = lr
         self.momentum: float = momentum
@@ -189,16 +213,25 @@ class NeuralNetwork:
     def train(self,
               inputs: Tensor,
               targets: Tensor,
-              epochs: int
+              epochs: int,
+              batch_size: int = 64
               ) -> Dict[str, Tensor]:
         history: Dict[str, Tensor] = {'loss': torch.zeros(epochs)}
+        num_samples = inputs.shape[0]
         for epoch in tqdm(range(epochs)):
-            outputs = self.forward(inputs)
-            loss = self.loss(outputs, targets)
-            history['loss'][epoch] = loss
-            grad = self.loss.gradient(outputs, targets)
-            self.backward(grad)
-            self.optimizer.step(self.layers)
+            permutation = torch.randperm(num_samples)
+            epoch_loss = 0.0
+            for i in range(0, num_samples, batch_size):
+                indices = permutation[i:i+batch_size]
+                batch_inputs = inputs[indices]
+                batch_targets = targets[indices]
+                outputs = self.forward(batch_inputs)
+                loss = self.loss(outputs, batch_targets)
+                epoch_loss += loss.item()
+                grad = self.loss.gradient(outputs, batch_targets)
+                self.backward(grad)
+                self.optimizer.step(self.layers)
+            history['loss'][epoch] = epoch_loss / (num_samples // batch_size)
         return history
 
     def __repr__(self):
@@ -213,7 +246,6 @@ if __name__ == "__main__":
     nn = NeuralNetwork(layer_sizes, 
                        activation=Tanh(), 
                        optimizer=optimizer)
-    print(nn)
     print(nn.layers)
 
     x = torch.linspace(-10, 10, 100).view(-1, 1)
