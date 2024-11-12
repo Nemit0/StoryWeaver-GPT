@@ -2,12 +2,15 @@
 
 ### Initializing project
 1. Make an venv
-```bash
+```bash <linux>
 python3 -m venv venv && source ./venv/bin/activate
 ```
 
-2. install requirements
-```bash
-pip install -r requirements.txt
+```powershell <windows>
+python -m venv venv && .\venv\Scripts\Activate
 ```
 
+2. install requirements
+```bash <Linux>
+pip install -r requirements.txt
+```
