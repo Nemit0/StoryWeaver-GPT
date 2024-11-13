@@ -17,3 +17,6 @@ def timer(func:Callable) -> Callable:
         print(f"Function {func.__name__} executed in {end_time - start_time}")
         return result
     return wrapper
+
+#todo: make a dataset loader function that automatically load, cleans, and parse the data
+#todo: make data splitting function
