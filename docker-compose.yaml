@@ -1,0 +1,11 @@
+services:
+  python-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - ./data:/data
+
+    working_dir: /app
+    command: python3 test.py
