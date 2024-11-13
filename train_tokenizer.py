@@ -37,7 +37,7 @@ def main() -> None:
 
     # Initialize the tokenizer
     tokenizer = BytePairTokenizer()
-    num_merges:int = 1000
+    num_merges:int = 8192
     tokenizer.train(data_list, num_merges=num_merges, verbose=True)
 
     # Save the model
@@ -60,10 +60,6 @@ def main() -> None:
     print(f"Decoded: {decoded}")
 
     return 0
-
-
-
-    
 
 if __name__ == '__main__':
     main()
