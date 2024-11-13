@@ -30,15 +30,18 @@ def main() -> None:
     
     print(f"Data length: {len(data)}")
 
-    data.replace('\n', '<newline>')
+    data_list = data.split('\n')
+    data_list = [line.replace('<newline>', '\n') for line in data_list]
+
+    print(f"Data list length: {len(data_list)}")
 
     # Initialize the tokenizer
     tokenizer = BytePairTokenizer()
-    num_merges:int = 4
-    tokenizer.train(data, num_merges=num_merges)
+    num_merges:int = 1000
+    tokenizer.train(data_list, num_merges=num_merges, verbose=True)
 
     # Save the model
-    model_path:str = os.path.join(project_root, 'models', 'tokenizer.json')
+    model_path:str = os.path.join(project_root, 'model', 'tokenizer_demo.json')
     tokenizer.save_model(model_path)
     print(f"Model saved to {model_path}")
     del tokenizer

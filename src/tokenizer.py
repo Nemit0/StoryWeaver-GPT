@@ -30,7 +30,9 @@ class BytePairTokenizer:
         """
         # Build the vocabulary: map token sequences to their frequencies
         vocab = {}
-        for sentence in corpus:
+        if verbose:
+            print("Building vocabulary...")
+        for sentence in tqdm(corpus):
             # Split sentence into words with leading whitespace preserved
             words = re.findall(r'\s*\S+|\s+', sentence)
             for word in words:
@@ -41,6 +43,8 @@ class BytePairTokenizer:
                 word_tuple = tuple(chars)
                 vocab[word_tuple] = vocab.get(word_tuple, 0) + 1
         
+        if verbose:
+            print("Vocabulary built.\nTraining BPE...")
         token_id = len(self.token_map)  # Starting token ID
         symbols = set()
         for word_tuple in vocab.keys():
@@ -51,6 +55,8 @@ class BytePairTokenizer:
                 token_id += 1
         self.inv_map = {i: t for t, i in self.token_map.items()}
         
+        if verbose:
+            print("Token map built.\nMerging tokens...")
         # Perform BPE merges
         for i in tqdm(range(num_merges)):
             pairs = self._get_pair_counts(vocab)
@@ -58,8 +64,6 @@ class BytePairTokenizer:
                 break
             best_pair = max(pairs, key=pairs.get)
             vocab = self._merge_vocab(best_pair, vocab)
-            if verbose:
-                print(f"Merging {best_pair} -> {i}")
             self.bpe_codes[best_pair] = i # Record the BPE merge rule
             new_symbol = ''.join(best_pair)
             if new_symbol not in self.token_map:
