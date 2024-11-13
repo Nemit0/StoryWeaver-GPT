@@ -1,11 +1,17 @@
 services:
   python-app:
+    container_name: mlgroup1
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
       - .:/app
       - ./data:/data
-
+      - ./model:/model
     working_dir: /app
-    command: python3 test.py
+    command: python3 train_tokenizer.py
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
