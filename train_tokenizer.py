@@ -12,7 +12,9 @@ from src.utils import get_project_root
 
 def main() -> None:
     # Prepare to load data
-    project_root:str = get_project_root('mlgroup1')
+    print(os.getcwd())
+    # project_root:str = get_project_root('mlgroup1')
+    project_root = os.getcwd()
     print(f"Project Root: {project_root}")
     data_path:str = os.path.join(project_root, 'data')
     source_list:List[str] = os.listdir(data_path)    
@@ -21,7 +23,6 @@ def main() -> None:
     
     source_list.remove('README')
     print(f"Datasets found: {source_list}")
-
     # Load the data
     data:str = ''
     for file in source_list:
