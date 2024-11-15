@@ -15,7 +15,7 @@ def main() -> None:
     print(z)
 
     # Count the number of prime numbers up to 1 million
-    N = 1_000_000
+    N = 10000
     x = range(N)
     y = [0] * N
     for i in tqdm(range(N)):
