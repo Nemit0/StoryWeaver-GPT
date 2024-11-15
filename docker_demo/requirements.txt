@@ -6,6 +6,3 @@ torch
 torchaudio
 torchvision
 tqdm
-flask
-flask-socketio
-eventlet

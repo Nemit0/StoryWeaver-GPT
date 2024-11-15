@@ -14,8 +14,7 @@ services:
       - .:/app
       - ./src:/src
       - ./data:/data
-    # run a python script
-    command: python3 app.py
+    command: python3 main.py
 
     # use the nvidia runtime to access the gpu
     deploy:
