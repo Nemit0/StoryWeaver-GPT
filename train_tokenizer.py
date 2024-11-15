@@ -42,7 +42,7 @@ def main() -> None:
     tokenizer.train(data_list, num_merges=num_merges, verbose=True)
 
     # Save the model
-    model_path:str = os.path.join(project_root, 'model', 'tokenizer_demo.json')
+    model_path:str = os.path.join(project_root, 'model', 'tokenizer.json')
     tokenizer.save_model(model_path)
     print(f"Model saved to {model_path}")
     del tokenizer

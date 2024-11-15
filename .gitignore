@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Custom data files
 .data
 data
 .test.py

@@ -1,8 +1,11 @@
 import json
 import re
+import os
 from typing import List, Dict, Tuple
 from multiprocessing import Pool
 from tqdm import tqdm
+
+from .utils import get_project_root
 
 class BytePairTokenizer:
     def __init__(self, data_path:str=None) -> None:
@@ -232,6 +235,18 @@ class BytePairTokenizer:
         self.token_map = model['token_map']
         self.inv_map = {i: t for t, i in self.token_map.items()}
         self.bpe_codes = {tuple(json.loads(k)): v for k, v in model['bpe_codes'].items()}
+
+def load_tokenizer(path:str = None) -> BytePairTokenizer:
+    """
+    Load the BytePairTokenizer model from the model folder
+    """
+    if path is None:
+        model_path:str = os.path.join(get_project_root('mlgroup1'), 'model', 'tokenizer.json')
+    else:
+        model_path:str = path
+    tokenizer = BytePairTokenizer()
+    tokenizer.load_model(model_path)
+    return tokenizer
 
 if __name__ == "__main__":
     # Test the BytePairTokenizer
