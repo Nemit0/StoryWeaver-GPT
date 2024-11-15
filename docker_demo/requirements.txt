@@ -1,0 +1,11 @@
+rich
+numpy
+pandas
+matplotlib
+torch
+torchaudio
+torchvision
+tqdm
+flask
+flask-socketio
+eventlet

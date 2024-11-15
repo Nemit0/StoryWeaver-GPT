@@ -1,0 +1,30 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time Monitoring</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+</head>
+<body>
+    <h1>Script Progress</h1>
+    <p>Progress: <span id="progress">0%</span></p>
+    <div id="log"></div>
+
+    <script>
+        var socket = io.connect();
+
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('progress', function(data) {
+            document.getElementById('progress').innerText = data.progress.toFixed(2) + '%';
+        });
+
+        socket.on('log', function(data) {
+            var logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<p>' + data.message + '</p>';
+        });
+    </script>
+</body>
+</html>

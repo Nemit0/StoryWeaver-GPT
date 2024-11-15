@@ -1,0 +1,27 @@
+# define the services
+services:
+  cuda_container:
+    container_name: cuda_container_demo
+    # use the nvidia cuda base image
+    # change this image to fit the cuda version you want to use
+    image: nvidia/cuda:12.2.0-base-ubuntu22.04
+    # using dockerfile to build the image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # mount the current directory to the container along with src and data
+    volumes:
+      - .:/app
+      - ./src:/src
+      - ./data:/data
+    # run a python script
+    command: python3 app.py
+
+    # use the nvidia runtime to access the gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
