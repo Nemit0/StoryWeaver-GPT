@@ -1,6 +1,7 @@
 services:
-  python-app:
+  cuda_container:
     container_name: mlgroup1
+    image: nvidia/cuda:12.2.0-base-ubuntu22.04
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,8 +11,9 @@ services:
       - ./model:/model
     working_dir: /app
     command: python3 train_tokenizer.py
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
+    deploy:
+      resources:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]

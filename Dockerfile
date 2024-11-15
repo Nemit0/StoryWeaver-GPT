@@ -5,8 +5,8 @@ WORKDIR /app
 COPY . /app
 
 RUN apt update && apt install -y wget vim python3 python3-pip curl && \
-    echo 'alias python="python3.12"' >> ~/.bashrc && \
-    echo 'alias pip="pip3"' >> ~/.bashrc && \
+    # echo 'alias python="python3"' >> ~/.bashrc && \
+    # echo 'alias pip="pip3"' >> ~/.bashrc && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 

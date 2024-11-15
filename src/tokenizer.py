@@ -244,8 +244,8 @@ def load_tokenizer(path:str = None) -> BytePairTokenizer:
         model_path:str = os.path.join(get_project_root('mlgroup1'), 'model', 'tokenizer.json')
     else:
         model_path:str = path
-    tokenizer = BytePairTokenizer()
-    tokenizer.load_model(model_path)
+    tokenizer = BytePairTokenizer(model_path)
+    # tokenizer.load_model(model_path)
     return tokenizer
 
 if __name__ == "__main__":
