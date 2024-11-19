@@ -189,6 +189,88 @@ class Layer:
         grad_input = torch.mm(grad, self.weights.t())
         return grad_input
 
+class SimpleLinear:
+    def __init__(self, input_size: int, output_size: int) -> None:
+        """
+        Args:
+            input_size (int): 입력 피처의 크기
+            output_size (int): 출력 피처의 크기
+        """
+        self.input_size: int = input_size
+        self.output_size: int = output_size
+        self.weights: Tensor = torch.rand(input_size, output_size) # 가중치 랜덤 초기화
+
+    def forward(self, inputs: Tensor) -> Tensor:
+        """
+        입력에 가중치를 단순 행렬곱하여 출력
+
+        Args:
+            inputs (Tensor): 입력 텐서 [batch_size, input_size]
+
+        Returns:
+            Tensor: 출력 텐서 [batch_size, output_size]
+        """
+        self.inputs: Tensor = inputs
+        self.output: Tensor = torch.mm(inputs, self.weights) # 단순 행렬곱
+        return self.output
+
+    def backward(self, grad_output: Tensor) -> Tensor:
+        """
+        손실 함수 그래디언트 이전 층으로 전달 및 가중치 그래디언트 계산
+
+        Args:
+            grad_output (Tensor): 상위 레이어로부터 전달된 그래디언트 [batch_size, output_size]
+
+        Returns:
+            Tensor: 하위 레이어로 전달할 그래디언트 [batch_size, input_size]
+        """
+
+        grad_input: Tensor = torch.mm(grad_output, self.weights.t()) # 단순 행렬곱
+        self.grad_weights: Tensor = torch.mm(self.inputs.t(), grad_output)
+        return grad_input
+
+class LayerNorm:
+    def __init__(self, embed_size: int, eps: float = 1e-5):
+        """
+        레이어 정규화 초기화
+
+        Args:
+            embed_size (int): 임베딩 차원
+            eps (float, optional): 안정성을 위한 작은 값. Defaults to 1e-5.
+        """
+        self.gamma = torch.ones(embed_size, requires_grad=False)
+        self.beta = torch.zeros(embed_size, requires_grad=False)
+        self.eps = eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        순전파 과정
+
+        Args:
+            x (Tensor): 입력 텐서 [batch_size, seq_length, embed_size]
+
+        Returns:
+            Tensor: 정규화된 텐서
+        """
+        self.mean = x.mean(dim=-1, keepdim=True)
+        self.std = x.std(dim=-1, keepdim=True)
+        self.normalized = (x - self.mean) / (self.std + self.eps)
+        return self.gamma * self.normalized + self.beta
+
+    def backward(self, grad_output: Tensor) -> Tensor:
+        """
+        역전파 과정
+
+        Args:
+            grad_output (Tensor): 상위 레이어로부터 전달된 그래디언트
+
+        Returns:
+            Tensor: 하위 레이어로 전달할 그래디언트
+        """
+        # 단순화를 위해 역전파는 gamma에 대한 기울기만 처리
+        return grad_output * self.gamma
+
+
 class NeuralNetwork:
     def __init__(self,
                  layer_sizes: list[int],
