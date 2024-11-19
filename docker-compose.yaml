@@ -11,9 +11,9 @@ services:
       - ./model:/model
     working_dir: /app
     command: python3 train_tokenizer.py
-    deploy:
-      resources:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     devices:
+    #       - driver: nvidia
+    #         count: 1
+    #         capabilities: [gpu]
