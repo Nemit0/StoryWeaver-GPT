@@ -223,7 +223,7 @@ class BytePairTokenizer:
              indent=4,
               ensure_ascii=False)
     
-    def load_model(self, model_path:str, encoding="UTF-8") -> None:
+    def load_model(self, model_path:str) -> None:
         """
         Load the model from a json file
         JSON doesn't allow tuple object as key
@@ -232,6 +232,7 @@ class BytePairTokenizer:
         """
         with open(model_path, 'r', encoding="UTF-8") as f:
             model = json.load(f)
+            
         self.token_map = model['token_map']
         self.inv_map = {i: t for t, i in self.token_map.items()}
         self.bpe_codes = {tuple(json.loads(k)): v for k, v in model['bpe_codes'].items()}
