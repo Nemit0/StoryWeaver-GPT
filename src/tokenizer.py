@@ -230,7 +230,7 @@ class BytePairTokenizer:
         hence the tuple keys are converted to string before saving
         and converted back to tuple when loading
         """
-        with open(model_path, 'r') as f:
+        with open(model_path, 'r', encoding="UTF-8") as f:
             model = json.load(f)
         self.token_map = model['token_map']
         self.inv_map = {i: t for t, i in self.token_map.items()}
