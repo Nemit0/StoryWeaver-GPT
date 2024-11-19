@@ -215,7 +215,7 @@ class BytePairTokenizer:
         The special tokens are not necessary for simple encoding/decoding
         hence it is omitted from the model
         """
-        with open(target_path, 'w') as f:
+        with open(target_path, 'w', encoding="UTF-8") as f:
             json.dump({
                 'token_map': self.token_map,
                 'bpe_codes': {json.dumps(list(k)): v for k, v in self.bpe_codes.items()}
@@ -223,7 +223,7 @@ class BytePairTokenizer:
              indent=4,
               ensure_ascii=False)
     
-    def load_model(self, model_path:str) -> None:
+    def load_model(self, model_path:str, encoding="UTF-8") -> None:
         """
         Load the model from a json file
         JSON doesn't allow tuple object as key
