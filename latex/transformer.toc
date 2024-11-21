@@ -1,0 +1,36 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {section}{\numberline {2}Data Preparation}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Reading the Dataset}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Tokenization}{2}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Model Components}{2}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Hyperparameters}{2}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Embedding Layer}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Fixed Positional Encoding}{3}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Layer Normalization}{3}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Multi-Head Attention}{4}{subsection.3.5}%
+\contentsline {subsubsection}{\numberline {3.5.1}Scaled Dot-Product Attention}{4}{subsubsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.6}Output Projection}{4}{subsection.3.6}%
+\contentsline {section}{\numberline {4}Training Process}{4}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Preparing Text Chunks}{4}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Loss Function}{5}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Training Loop}{5}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Text Generation}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Example Usage}{6}{subsection.5.1}%
+\contentsline {section}{\numberline {6}Mathematical Explanation}{7}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Tokenization}{7}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Embeddings}{7}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Positional Encoding}{7}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Layer Normalization}{7}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Multi-Head Attention}{7}{subsection.6.5}%
+\contentsline {subsubsection}{\numberline {6.5.1}Computing Queries, Keys, and Values}{8}{subsubsection.6.5.1}%
+\contentsline {subsubsection}{\numberline {6.5.2}Splitting into Heads}{8}{subsubsection.6.5.2}%
+\contentsline {subsubsection}{\numberline {6.5.3}Scaled Dot-Product Attention}{9}{subsubsection.6.5.3}%
+\contentsline {subsubsection}{\numberline {6.5.4}Causal Masking}{9}{subsubsection.6.5.4}%
+\contentsline {subsubsection}{\numberline {6.5.5}Concatenation and Output Projection}{10}{subsubsection.6.5.5}%
+\contentsline {subsubsection}{\numberline {6.5.6}Final Output}{11}{subsubsection.6.5.6}%
+\contentsline {subsection}{\numberline {6.6}Output Projection}{11}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}Training Objective}{11}{subsection.6.7}%
+\contentsline {subsection}{\numberline {6.8}Backpropagation and Parameter Updates}{12}{subsection.6.8}%
+\contentsline {subsection}{\numberline {6.9}Purpose of Multi-Head Attention}{12}{subsection.6.9}%
+\contentsline {subsubsection}{\numberline {6.9.1}Computation Summary}{12}{subsubsection.6.9.1}%
+\contentsline {subsubsection}{\numberline {6.9.2}Aggregation of Attention Outputs}{12}{subsubsection.6.9.2}%

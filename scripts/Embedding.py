@@ -56,4 +56,4 @@ class Embedding:
         return None
 
     def __str__(self) -> str:
-        return "CustomEmbedding"
+        return "CustomEmbedding"    
