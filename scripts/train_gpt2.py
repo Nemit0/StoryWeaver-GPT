@@ -1,8 +1,8 @@
 # train_gpt2.py
 import torch
-from gpt2 import GPT2
+from mlgroup1.scripts.gpt2 import GPT2
 from nn_objects2 import CrossEntropyLoss, AdamOptim
-from utils2 import generate_square_subsequent_mask
+from mlgroup1.scripts.utils2 import generate_square_subsequent_mask
 from torch.utils.data import Dataset, DataLoader
 from typing import Callable
 

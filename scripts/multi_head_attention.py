@@ -2,7 +2,7 @@
 import torch
 from torch import Tensor
 from typing import Optional
-from attention import ScaledDotProductAttention
+from mlgroup1.scripts.attention import ScaledDotProductAttention
 
 class MultiHeadAttention:
     def __init__(self, embed_size: int, heads: int):

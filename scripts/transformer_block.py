@@ -2,9 +2,9 @@
 import torch
 from torch import Tensor
 from typing import Optional
-from multi_head_attention import MultiHeadAttention
+from mlgroup1.scripts.multi_head_attention import MultiHeadAttention
 from layer_norm import LayerNorm
-from feed_forward import FeedForward
+from mlgroup1.scripts.feed_forward import FeedForward
 from nn_objects2 import Activation
 
 class TransformerBlock:

@@ -2,9 +2,9 @@
 import torch
 from torch import Tensor
 from typing import Optional
-from Embedding import Embedding
-from positional_encoding import PositionalEncoding
-from transformer_block import TransformerBlock
+from mlgroup1.model.Embedding import Embedding
+from mlgroup1.model.positional_encoding import PositionalEncoding
+from mlgroup1.scripts.transformer_block import TransformerBlock
 from nn_objects2 import Activation, Layer, ReLU, Linear
 from layer_norm import LayerNorm
 
