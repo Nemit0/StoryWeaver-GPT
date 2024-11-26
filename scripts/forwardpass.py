@@ -780,14 +780,14 @@ def main() -> None:
     print(f"Decoded: {decoded}")
 
     vocab_size = len(tokenizer.token_map)
-    embedding_dim = 1024
+    embedding_dim = 512
     max_seq_len = 100
     heads = 8
     ff_dim = 512
     input_indices = torch.tensor(encoded)
 
     # Create GPT model
-    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_dim, num_blocks=6)
+    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_dim, num_blocks=2)
     Gpt_Object.train = False
     pos = PositionalEncoding(max_seq_len, embedding_dim)
     output = Gpt_Object.forward(input_indices, pos=pos)
