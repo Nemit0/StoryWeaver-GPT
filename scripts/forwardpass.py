@@ -780,7 +780,7 @@ def main() -> None:
     print(f"Decoded: {decoded}")
 
     vocab_size = len(tokenizer.token_map)
-    embedding_dim = 512
+    embedding_dim = 1024
     max_seq_len = 100
     heads = 8
     ff_dim = 512
