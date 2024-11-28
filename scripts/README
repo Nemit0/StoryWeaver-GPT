@@ -1,1 +1,17 @@
 Directory to store scripts
+
+# From Theory to Code: Step-by-Step Implementation and Code Breakdown of GPT-2 model
+# 1128 발표 ppt 2번째 슬라이드 사진 및 내용 출처.. 
+'https://medium.com/@vipul.koti333/from-theory-to-code-step-by-step-implementation-and-code-breakdown-of-gpt-2-model-7bde8d5cecda'
+
+# An In-Depth Look at the Transformer Based Models
+# Transformer-based models graph 출처
+'https://medium.com/the-modern-scientist/an-in-depth-look-at-the-transformer-based-models-22e5f5d17b6b'
+
+# self-attetion의 모든것..
+'https://blog.liam.kim/posts/2024/03/What-Is-K-Q-V-in-Transformer/'
+
+#슬라이드7 Tokenizer 출처..
+'https://towardsdatascience.com/build-a-tokenizer-for-the-thai-language-from-scratch-0e4ea5f2a8b3'
+#슬라이드 BPE 출처..
+'https://ratsgo.github.io/nlpbook/docs/preprocess/bpe/' 
