@@ -7,6 +7,7 @@ def main() -> None:
     print(f"Encoded: {encoded}")
     decoded = tokenizer.decode(encoded)
     print(f"Decoded: {decoded}")
+    print(f"Vocab size: {len(tokenizer.token_map)}")
 
 if __name__ == "__main__":
     main()

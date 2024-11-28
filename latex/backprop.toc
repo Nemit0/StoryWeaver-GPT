@@ -1,0 +1,31 @@
+\contentsline {section}{\numberline {1}Overview of the Forward Pass}{2}{section.1}%
+\contentsline {section}{\numberline {2}Loss Function and Gradient Calculation}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Cross-Entropy Loss}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Gradient of Loss with Respect to Logits}{2}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Backward Pass Through the Network}{2}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Output Projection Layer}{2}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}Forward Pass}{2}{subsubsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.2}Gradient Computations}{3}{subsubsection.3.1.2}%
+\contentsline {paragraph}{Gradient with Respect to $W$}{3}{section*.2}%
+\contentsline {paragraph}{Gradient with Respect to $h$}{3}{section*.3}%
+\contentsline {subsection}{\numberline {3.2}Transformer Encoder Blocks}{3}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Multi-Head Attention}{3}{subsubsection.3.2.1}%
+\contentsline {paragraph}{Forward Pass}{3}{section*.4}%
+\contentsline {paragraph}{Gradient Computations}{4}{section*.5}%
+\contentsline {subsubsection}{\numberline {3.2.2}Layer Normalization and Residual Connection}{5}{subsubsection.3.2.2}%
+\contentsline {paragraph}{Forward Pass}{5}{section*.6}%
+\contentsline {paragraph}{Gradient Computations}{5}{section*.7}%
+\contentsline {subsubsection}{\numberline {3.2.3}Feed-Forward Network}{6}{subsubsection.3.2.3}%
+\contentsline {paragraph}{Forward Pass}{6}{section*.8}%
+\contentsline {paragraph}{Gradient Computations}{6}{section*.9}%
+\contentsline {subsection}{\numberline {3.3}Positional Encoding}{7}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Embedding Layer}{7}{subsection.3.4}%
+\contentsline {subsubsection}{\numberline {3.4.1}Forward Pass}{7}{subsubsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.4.2}Gradient Computations}{7}{subsubsection.3.4.2}%
+\contentsline {section}{\numberline {4}Parameter Updates}{7}{section.4}%
+\contentsline {section}{\numberline {5}Example Calculations}{7}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Compute $\frac {\partial L}{\partial z}$}{8}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Compute Gradients in Output Projection Layer}{8}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Backpropagate Through Transformer Blocks}{8}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Update Parameters}{8}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Key Takeaways}{8}{section.6}%

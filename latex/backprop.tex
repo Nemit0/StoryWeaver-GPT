@@ -1,0 +1,540 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{bm}
+\usepackage{mathrsfs}
+
+\geometry{a4paper, margin=1in}
+
+\title{Transformer Gradiant Calculation}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+
+\section{Overview of the Forward Pass}
+
+The forward pass of the model involves the following steps:
+
+\begin{enumerate}
+    \item \textbf{Token Embedding}: Converts input token indices to embeddings.
+    \item \textbf{Positional Encoding}: Adds positional information to the embeddings.
+    \item \textbf{Transformer Encoder Blocks}: Composed of multi-head attention and feed-forward networks with residual connections and layer normalization.
+    \item \textbf{Output Projection Layer}: Maps the final embeddings to logits over the vocabulary.
+    \item \textbf{Softmax Function}: Converts logits to probabilities.
+    \item \textbf{Loss Computation}: Calculates the cross-entropy loss between predicted probabilities and true labels.
+\end{enumerate}
+
+\section{Loss Function and Gradient Calculation}
+
+\subsection{Cross-Entropy Loss}
+
+Given the predicted probabilities $\hat{y}_i$ and true labels $y_i$, the cross-entropy loss for a single sample is:
+
+\begin{equation}
+    L = -\log(\hat{y}_{y_i})
+\end{equation}
+
+For a batch of $N$ samples, the average loss is:
+
+\begin{equation}
+    L = -\frac{1}{N} \sum_{i=1}^{N} \log(\hat{y}_{i, y_i})
+\end{equation}
+
+\subsection{Gradient of Loss with Respect to Logits}
+
+The softmax function converts logits $z_i$ to probabilities $\hat{y}_i$:
+
+\begin{equation}
+    \hat{y}_{i, j} = \frac{e^{z_{i, j}}}{\sum_{k} e^{z_{i, k}}}
+\end{equation}
+
+The gradient of the loss $L$ with respect to the logits $z_{i, j}$ is:
+
+\begin{equation}
+    \frac{\partial L}{\partial z_{i, j}} = \hat{y}_{i, j} - \delta_{j, y_i}
+\end{equation}
+
+where $\delta_{j, y_i}$ is the Kronecker delta function:
+
+\[
+\delta_{j, y_i} = \begin{cases}
+1 & \text{if } j = y_i \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\section{Backward Pass Through the Network}
+
+We will compute the gradients layer by layer, starting from the output and moving backward through the network.
+
+\subsection{Output Projection Layer}
+
+\subsubsection{Forward Pass}
+
+The output projection layer computes the logits:
+
+\begin{equation}
+    z = h W
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $h \in \mathbb{R}^{N \times d}$: Input embeddings from the previous layer.
+    \item $W \in \mathbb{R}^{d \times V}$: Weight matrix mapping to vocabulary size $V$.
+\end{itemize}
+
+\subsubsection{Gradient Computations}
+
+\paragraph{Gradient with Respect to $W$}
+
+\begin{equation}
+    \frac{\partial L}{\partial W} = h^\top \left( \hat{Y} - Y \right)
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $\hat{Y} \in \mathbb{R}^{N \times V}$: Predicted probabilities.
+    \item $Y \in \mathbb{R}^{N \times V}$: One-hot encoded true labels.
+\end{itemize}
+
+\paragraph{Gradient with Respect to $h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial h} = \left( \hat{Y} - Y \right) W^\top
+\end{equation}
+
+\subsection{Transformer Encoder Blocks}
+
+Each Transformer encoder block contains:
+
+\begin{itemize}
+    \item Multi-head attention with residual connection and layer normalization.
+    \item Feed-forward network with residual connection and layer normalization.
+\end{itemize}
+
+We will compute gradients for each component.
+
+\subsubsection{Multi-Head Attention}
+
+\paragraph{Forward Pass}
+
+For each head $h$:
+
+\begin{enumerate}
+    \item \textbf{Compute Queries, Keys, Values}:
+
+    \begin{equation}
+        Q_h = X W_Q^h, \quad K_h = X W_K^h, \quad V_h = X W_V^h
+    \end{equation}
+
+    \item \textbf{Scaled Dot-Product Attention}:
+
+    \begin{equation}
+        S_h = \frac{Q_h K_h^\top}{\sqrt{d_k}}
+    \end{equation}
+
+    \item \textbf{Apply Mask and Softmax}:
+
+    \begin{equation}
+        A_h = \text{softmax}(S_h + \text{mask})
+    \end{equation}
+
+    \item \textbf{Compute Attention Output}:
+
+    \begin{equation}
+        O_h = A_h V_h
+    \end{equation}
+
+    \item \textbf{Output Projection}:
+
+    \begin{equation}
+        H_h = O_h W_O^h
+    \end{equation}
+
+    \item \textbf{Aggregate Heads}:
+
+    \begin{equation}
+        H = \sum_{h=1}^{H} H_h
+    \end{equation}
+\end{enumerate}
+
+\paragraph{Gradient Computations}
+
+\textbf{Gradient with Respect to $H_h$}
+
+Since $H = \sum H_h$:
+
+\begin{equation}
+    \frac{\partial L}{\partial H_h} = \frac{\partial L}{\partial H}
+\end{equation}
+
+\textbf{Gradient with Respect to $W_O^h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_O^h} = O_h^\top \frac{\partial L}{\partial H_h}
+\end{equation}
+
+\textbf{Gradient with Respect to $O_h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial O_h} = \frac{\partial L}{\partial H_h} {W_O^h}^\top
+\end{equation}
+
+\textbf{Gradient with Respect to $A_h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial A_h} = \frac{\partial L}{\partial O_h} V_h^\top
+\end{equation}
+
+\textbf{Gradient with Respect to $V_h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial V_h} = A_h^\top \frac{\partial L}{\partial O_h}
+\end{equation}
+
+\textbf{Gradient with Respect to Attention Scores $S_h$}
+
+Let $G_h = \frac{\partial L}{\partial A_h}$. Since $A_h = \text{softmax}(S_h)$, we have:
+
+\begin{equation}
+    \frac{\partial L}{\partial S_h} = A_h \odot \left( G_h - (A_h \odot G_h) \mathbf{1} \right)
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $\odot$: Element-wise multiplication.
+    \item $\mathbf{1}$: Column vector of ones.
+\end{itemize}
+
+\textbf{Gradient with Respect to $Q_h$ and $K_h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial Q_h} = \left( \frac{\partial L}{\partial S_h} \right) K_h \left( \frac{1}{\sqrt{d_k}} \right)
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial K_h} = \left( \frac{\partial L}{\partial S_h} \right)^\top Q_h \left( \frac{1}{\sqrt{d_k}} \right)
+\end{equation}
+
+\textbf{Gradient with Respect to $W_Q^h$, $W_K^h$, $W_V^h$}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_Q^h} = X^\top \frac{\partial L}{\partial Q_h}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_K^h} = X^\top \frac{\partial L}{\partial K_h}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_V^h} = X^\top \frac{\partial L}{\partial V_h}
+\end{equation}
+
+\textbf{Gradient with Respect to $X$}
+
+Accumulate contributions from $Q_h$, $K_h$, $V_h$:
+
+\begin{equation}
+    \frac{\partial L}{\partial X} += \frac{\partial L}{\partial Q_h} {W_Q^h}^\top + \frac{\partial L}{\partial K_h} {W_K^h}^\top + \frac{\partial L}{\partial V_h} {W_V^h}^\top
+\end{equation}
+
+\subsubsection{Layer Normalization and Residual Connection}
+
+\paragraph{Forward Pass}
+
+\begin{enumerate}
+    \item \textbf{Residual Connection}:
+
+    \begin{equation}
+        X_{\text{residual}} = X + H
+    \end{equation}
+
+    \item \textbf{Layer Normalization}:
+
+    \begin{equation}
+        X' = \text{LayerNorm}(X_{\text{residual}})
+    \end{equation}
+\end{enumerate}
+
+\paragraph{Gradient Computations}
+
+\textbf{Gradient with Respect to LayerNorm Output}
+
+\begin{equation}
+    \frac{\partial L}{\partial X'} = \text{Gradient from Next Layer}
+\end{equation}
+
+\textbf{Compute Intermediate Variables}
+
+\begin{itemize}
+    \item Mean $\mu$ and variance $\sigma^2$:
+
+    \begin{equation}
+        \mu = \frac{1}{D} \sum_{i=1}^{D} X_{\text{residual}, i}, \quad \sigma^2 = \frac{1}{D} \sum_{i=1}^{D} \left( X_{\text{residual}, i} - \mu \right)^2
+    \end{equation}
+
+    \item Normalized input $\hat{X}$:
+
+    \begin{equation}
+        \hat{X} = \frac{X_{\text{residual}} - \mu}{\sqrt{\sigma^2 + \epsilon}}
+    \end{equation}
+\end{itemize}
+
+\textbf{Gradient with Respect to Scale and Shift Parameters}
+
+\begin{equation}
+    \frac{\partial L}{\partial \gamma} = \sum_{i} \frac{\partial L}{\partial X'_i} \hat{X}_i
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial \beta} = \sum_{i} \frac{\partial L}{\partial X'_i}
+\end{equation}
+
+\textbf{Gradient with Respect to Normalized Input}
+
+\begin{equation}
+    \frac{\partial L}{\partial \hat{X}} = \frac{\partial L}{\partial X'} \odot \gamma
+\end{equation}
+
+\textbf{Gradient with Respect to $X_{\text{residual}}$}
+
+\begin{equation}
+    \frac{\partial L}{\partial X_{\text{residual}}} = \frac{1}{\sqrt{\sigma^2 + \epsilon}} \left( \frac{\partial L}{\partial \hat{X}} - \frac{1}{D} \sum_{i} \frac{\partial L}{\partial \hat{X}_i} - \hat{X}_i \sum_{i} \left( \frac{\partial L}{\partial \hat{X}_i} \hat{X}_i \right) \right)
+\end{equation}
+
+\textbf{Gradient with Respect to $X$ and $H$}
+
+Since $X_{\text{residual}} = X + H$:
+
+\begin{equation}
+    \frac{\partial L}{\partial X} += \frac{\partial L}{\partial X_{\text{residual}}}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial H} = \frac{\partial L}{\partial X_{\text{residual}}}
+\end{equation}
+
+\subsubsection{Feed-Forward Network}
+
+\paragraph{Forward Pass}
+
+\begin{enumerate}
+    \item \textbf{First Linear Layer}:
+
+    \begin{equation}
+        F = X' W_1 + b_1
+    \end{equation}
+
+    \item \textbf{ReLU Activation}:
+
+    \begin{equation}
+        A = \text{ReLU}(F)
+    \end{equation}
+
+    \item \textbf{Second Linear Layer}:
+
+    \begin{equation}
+        G = A W_2 + b_2
+    \end{equation}
+
+    \item \textbf{Residual Connection and Layer Normalization}:
+
+    \begin{equation}
+        Y_{\text{residual}} = X' + G
+    \end{equation}
+
+    \begin{equation}
+        Y = \text{LayerNorm}(Y_{\text{residual}})
+    \end{equation}
+\end{enumerate}
+
+\paragraph{Gradient Computations}
+
+\textbf{Gradient with Respect to Output $Y$}
+
+Backpropagate through layer normalization and residual connection as previously described.
+
+\textbf{Gradient with Respect to $G$}
+
+\begin{equation}
+    \frac{\partial L}{\partial G} = \frac{\partial L}{\partial Y_{\text{residual}}}
+\end{equation}
+
+\textbf{Gradient with Respect to $W_2$ and $A$}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_2} = A^\top \frac{\partial L}{\partial G}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial A} = \frac{\partial L}{\partial G} W_2^\top
+\end{equation}
+
+\textbf{Gradient Through ReLU Activation}
+
+\begin{equation}
+    \frac{\partial L}{\partial F} = \frac{\partial L}{\partial A} \odot \mathbb{1}_{F > 0}
+\end{equation}
+
+where $\mathbb{1}_{F > 0}$ is the indicator function:
+
+\[
+\mathbb{1}_{F > 0} = \begin{cases}
+1 & \text{if } F > 0 \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\textbf{Gradient with Respect to $W_1$ and $X'$}
+
+\begin{equation}
+    \frac{\partial L}{\partial W_1} = {X'}^\top \frac{\partial L}{\partial F}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial X'} += \frac{\partial L}{\partial F} W_1^\top
+\end{equation}
+
+\textbf{Accumulate Gradient from Residual Connection}
+
+\begin{equation}
+    \frac{\partial L}{\partial X'} += \frac{\partial L}{\partial Y_{\text{residual}}}
+\end{equation}
+
+\subsection{Positional Encoding}
+
+Positional encoding adds positional information to the embeddings:
+
+\begin{equation}
+    E_{\text{pos}} = E + P
+\end{equation}
+
+\begin{itemize}
+    \item If $P$ is \textbf{fixed}, no gradients are computed for $P$, and gradients with respect to $E$ pass through unchanged.
+    \item If $P$ is \textbf{learnable}, compute gradients with respect to $P$ similarly to $E$.
+\end{itemize}
+
+\subsection{Embedding Layer}
+
+\subsubsection{Forward Pass}
+
+The embedding layer maps token indices $I$ to embeddings $E$:
+
+\begin{equation}
+    X = E[I]
+\end{equation}
+
+\subsubsection{Gradient Computations}
+
+For each token index $i$ in the sequence:
+
+\begin{equation}
+    \frac{\partial L}{\partial E_{I_i}} += \frac{\partial L}{\partial X_i}
+\end{equation}
+
+We accumulate the gradient for each embedding corresponding to the token indices.
+
+\section{Parameter Updates}
+
+After computing all gradients, we update the parameters using gradient descent:
+
+\begin{equation}
+    \theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $\theta$: Parameters (weights and biases) of the model.
+    \item $\eta$: Learning rate.
+\end{itemize}
+
+For example:
+
+\begin{itemize}
+    \item \textbf{Update Embedding Matrix}:
+
+    \begin{equation}
+        E[I_i] \leftarrow E[I_i] - \eta \frac{\partial L}{\partial E_{I_i}}
+    \end{equation}
+
+    \item \textbf{Update Weights in Linear Layers}:
+
+    \begin{equation}
+        W \leftarrow W - \eta \frac{\partial L}{\partial W}
+    \end{equation}
+\end{itemize}
+
+\section{Example Calculations}
+
+Consider a simple example with the following assumptions:
+
+\begin{itemize}
+    \item Batch size $N = 1$.
+    \item Vocabulary size $V$.
+    \item Embedding dimension $d$.
+    \item Input sequence length $T$.
+\end{itemize}
+
+\subsection{Compute $\frac{\partial L}{\partial z}$}
+
+Given the predicted probabilities $\hat{y}$ and true label $y$:
+
+\begin{equation}
+    \frac{\partial L}{\partial z_j} = \hat{y}_j - \delta_{j, y}
+\end{equation}
+
+This vector has a non-zero component for each class.
+
+\subsection{Compute Gradients in Output Projection Layer}
+
+\textbf{Weights $W$}:
+
+\begin{equation}
+    \frac{\partial L}{\partial W} = h^\top (\hat{y} - y_{\text{one-hot}})
+\end{equation}
+
+\textbf{Input $h$}:
+
+\begin{equation}
+    \frac{\partial L}{\partial h} = (\hat{y} - y_{\text{one-hot}}) W^\top
+\end{equation}
+
+\subsection{Backpropagate Through Transformer Blocks}
+
+Repeat gradient computations for each block as outlined, ensuring to:
+
+\begin{itemize}
+    \item Accumulate gradients at residual connections.
+    \item Backpropagate through layer normalization carefully, considering mean and variance dependencies.
+\end{itemize}
+
+\subsection{Update Parameters}
+
+For each parameter $\theta$:
+
+\begin{equation}
+    \theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}
+\end{equation}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item \textbf{Chain Rule Application}: Gradients are computed by applying the chain rule backward through each layer.
+    \item \textbf{Matrix Calculus}: Utilize matrix derivatives to compute gradients efficiently.
+    \item \textbf{Residual Connections}: When layers have residual connections, gradients from both paths are added together.
+    \item \textbf{Layer Normalization}: Requires careful computation due to dependencies between inputs (mean and variance).
+    \item \textbf{Parameter Updates}: After computing gradients, parameters are updated using gradient descent or an optimizer.
+\end{itemize}
+
+\end{document}
