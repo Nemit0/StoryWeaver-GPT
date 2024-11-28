@@ -10,7 +10,7 @@ services:
       - ./data:/data
       - ./model:/model
     working_dir: /app
-    command: python3 train_tokenizer.py
+    command: python3 ./.data/transformer.py
     # deploy:
     #   resources:
     #     devices:

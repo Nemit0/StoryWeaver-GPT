@@ -385,75 +385,7 @@ class PositionalEncoding:
         pos_encoding = self.pos_encoding[:seq_length, :]  # Slice for the current sequence length
 
         return x + pos_encoding.to(x.device)
-
-class ScaledDotProductAttention:
-    def __init__(self, embed_size: int):
-        """
-        Scaled Dot-Product Attention 초기화
-
-        Args:
-            embed_size (int): 임베딩 차원
-        """
-        self.embed_size = embed_size
-        self.scale = embed_size ** 0.5  # 스케일링 인자
-
-    def forward(self, Q: Tensor, K: Tensor, V: Tensor, mask: Tensor = None) -> Tensor:
-        """
-        순전파 과정
-
-        Args:
-            Q (Tensor): Query 행렬 [batch_size, heads, seq_length, head_dim]
-            K (Tensor): Key 행렬 [batch_size, heads, seq_length, head_dim]
-            V (Tensor): Value 행렬 [batch_size, heads, seq_length, head_dim]
-            mask (Optional[Tensor], optional): 마스크 텐서. Defaults to None.
-
-        Returns:
-            Tensor: Attention 출력 [batch_size, heads, seq_length, head_dim]
-        """
-        self.Q = Q
-        self.K = K
-        self.V = V
-        self.mask = mask
-
-        # Q와 K의 내적을 통해 Attention 점수 계산
-        self.scores = torch.matmul(Q, K.transpose(-2, -1)) / self.scale  # [batch_size, heads, seq_length, seq_length]
-
-        if mask is not None:
-            self.scores = self.scores.masked_fill(mask == 0, float('-inf'))
-
-        # 소프트맥스를 통해 Attention 가중치 계산
-        self.attention_weights = torch.softmax(self.scores, dim=-1)  # [batch_size, heads, seq_length, seq_length]
-
-        # Attention 가중치를 V에 적용하여 최종 출력 생성
-        self.out = torch.matmul(self.attention_weights, V)  # [batch_size, heads, seq_length, head_dim]
-
-        return self.out
-
-    def backward(self, grad_output: Tensor) -> tuple:
-        """
-        역전파 과정
-
-        Args:
-            grad_output (Tensor): 상위 레이어로부터 전달된 그래디언트 [batch_size, heads, seq_length, head_dim]
-
-        Returns:
-            tuple: (grad_Q, grad_K, grad_V)
-        """
-        # Gradients for V
-        grad_V = torch.matmul(self.attention_weights.transpose(-2, -1), grad_output)  # [batch_size, heads, seq_length, head_dim]
-
-        # Gradients for attention_weights
-        grad_attention_weights = torch.matmul(grad_output, self.V.transpose(-2, -1))  # [batch_size, heads, seq_length, seq_length]
-
-        # Gradient of softmax (scores)
-        grad_scores = self.attention_weights * (grad_attention_weights - (self.attention_weights * grad_attention_weights).sum(dim=-1, keepdim=True))
-
-        # Gradients for Q and K
-        grad_Q = torch.matmul(grad_scores, self.K) / self.scale  # [batch_size, heads, seq_length, head_dim]
-        grad_K = torch.matmul(grad_scores.transpose(-2, -1), self.Q) / self.scale  # [batch_size, heads, seq_length, head_dim]
-
-        return grad_Q, grad_K, grad_V
-    
+   
 class MultiHeadAttention:
     def __init__(self, embed_size: int, heads: int):
         """
@@ -467,15 +399,63 @@ class MultiHeadAttention:
         self.heads = heads
         self.head_dim = embed_size // heads
 
-        assert (
-            self.head_dim * heads == embed_size
-        ), "임베딩 차원(embed_size)은 헤드 수(heads)로 나누어 떨어져야 합니다."
+        if embed_size % heads != 0:
+            raise ValueError(f"Embedding dimension ({embed_size}) must be divisible by the number of heads ({heads})")
 
-        # Q, K, V 선형 변환을 위한 가중치 초기화
-        self.W_Q = torch.randn(embed_size, embed_size) * (self.head_dim ** -0.5)
-        self.W_K = torch.randn(embed_size, embed_size) * (self.head_dim ** -0.5)
-        self.W_V = torch.randn(embed_size, embed_size) * (self.head_dim ** -0.5)
-        self.W_O = torch.randn(embed_size, embed_size) * (self.head_dim ** -0.5)
+        # Initialize separate weights for each head
+        self.W_Q = [torch.randn(embed_size, self.head_dim) * (self.head_dim ** -0.5) for _ in range(heads)]
+        self.W_K = [torch.randn(embed_size, self.head_dim) * (self.head_dim ** -0.5) for _ in range(heads)]
+        self.W_V = [torch.randn(embed_size, self.head_dim) * (self.head_dim ** -0.5) for _ in range(heads)]
+        self.W_O = [torch.randn(self.head_dim, embed_size) * (self.head_dim ** -0.5) for _ in range(heads)]
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass for multi-head attention with masking.
+
+        Args:
+            x (Tensor): Input tensor of shape [seq_length, embed_size].
+
+        Returns:
+            Tensor: Output tensor of shape [seq_length, embed_size].
+        """
+        seq_length, embed_size = x.size()
+        assert embed_size == self.embed_size, "Input embedding size must match initialized size."
+
+        # Compute Q, K, V for each head
+        Q_heads, K_heads, V_heads = [], [], []
+        for i in range(self.heads):
+            Q_heads.append(torch.matmul(x, self.W_Q[i]))  # [seq_length, head_dim]
+            K_heads.append(torch.matmul(x, self.W_K[i]))  # [seq_length, head_dim]
+            V_heads.append(torch.matmul(x, self.W_V[i]))  # [seq_length, head_dim]
+
+        # Create a mask for the lower triangular part
+        mask = torch.triu(torch.full((seq_length, seq_length), float('-inf')), diagonal=1)  # [seq_length, seq_length]
+
+        # Compute attention for each head
+        head_outputs = []
+        for i in range(self.heads):
+            # Scaled dot-product attention with masking
+            scores = torch.matmul(Q_heads[i], K_heads[i].transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))  # [seq_length, seq_length]
+            scores = scores + mask  # Apply mask
+            attention_weights = torch.softmax(scores, dim=-1)  # [seq_length, seq_length]
+            attention_out = torch.matmul(attention_weights, V_heads[i])  # [seq_length, head_dim]
+            head_outputs.append(torch.matmul(attention_out, self.W_O[i]))  # [seq_length, embed_size]
+
+        # Combine outputs from all heads
+        # print(torch.sum(torch.stack(head_outputs, dim=0), dim=0).shape)
+        out = torch.sum(torch.stack(head_outputs, dim=0), dim=0)  # [seq_length, embed_size]
+        return out
+
+class AttentionBlock:
+    def __init__(self, embed_size: int, heads: int):
+        """
+        Attention Block 초기화
+
+        Args:
+            embed_size (int): 임베딩 차원
+            heads (int): Multi-Head Attention의 헤드 수
+        """
+        self.attention = MultiHeadAttention(embed_size, heads)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -485,32 +465,25 @@ class MultiHeadAttention:
             x (Tensor): 입력 텐서 [seq_length, embed_size]
 
         Returns:
-            Tensor: Multi-Head Attention 출력 [seq_length, embed_size]
+            Tensor: Attention Block 출력 [seq_length, embed_size]
         """
-        # Q, K, V 생성
-        Q = torch.matmul(x, self.W_Q)  # [seq_length, embed_size]
-        K = torch.matmul(x, self.W_K)  # [seq_length, embed_size]
-        V = torch.matmul(x, self.W_V)  # [seq_length, embed_size]
+        # Multi-Head Attention 수행
+        attention_out = self.attention.forward(x)
+        return attention_out
 
-        # 헤드 수에 맞게 분할
-        seq_length, embed_size = x.size()
-        Q = Q.view(seq_length, self.heads, self.head_dim).transpose(0, 1)  # [heads, seq_length, head_dim]
-        K = K.view(seq_length, self.heads, self.head_dim).transpose(0, 1)  # [heads, seq_length, head_dim]
-        V = V.view(seq_length, self.heads, self.head_dim).transpose(0, 1)  # [heads, seq_length, head_dim]
+    def backward(self, grad_output: Tensor) -> Tensor:
+        """
+        역전파 과정
 
-        # Attention 스코어 계산
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))  # [heads, seq_length, seq_length]
-        attention_weights = torch.softmax(scores, dim=-1)  # [heads, seq_length, seq_length]
+        Args:
+            grad_output (Tensor): 상위 레이어로부터 전달된 그래디언트
 
-        # Attention 결과 계산
-        attention_out = torch.matmul(attention_weights, V)  # [heads, seq_length, head_dim]
-
-        # 헤드 결합
-        attention_out = attention_out.transpose(0, 1).contiguous().view(seq_length, embed_size)  # [seq_length, embed_size]
-
-        # 최종 선형 변환
-        out = torch.matmul(attention_out, self.W_O)  # [seq_length, embed_size]
-        return out
+        Returns:
+            Tensor: 하위 레이어로 전달할 그래디언트
+        """
+        raise NotImplementedError
+        grad = self.layer_norm.backward(grad_output)
+        return grad
         
 class LayerNorm:
     def __init__(self, embed_size: int, eps: float = 1e-5):
@@ -552,49 +525,6 @@ class LayerNorm:
         """
         # 단순화를 위해 역전파는 gamma에 대한 기울기만 처리
         return grad_output * self.gamma
-
-class AttentionBlock:
-    def __init__(self, embed_size: int, heads: int):
-        """
-        Attention Block 초기화
-
-        Args:
-            embed_size (int): 임베딩 차원
-            heads (int): Multi-Head Attention의 헤드 수
-        """
-        self.attention = MultiHeadAttention(embed_size, heads)
-        self.layer_norm = LayerNorm(embed_size)
-
-    def forward(self, x: Tensor) -> Tensor:
-        """
-        순전파 과정
-
-        Args:
-            x (Tensor): 입력 텐서 [seq_length, embed_size]
-
-        Returns:
-            Tensor: Attention Block 출력 [seq_length, embed_size]
-        """
-        # Multi-Head Attention 수행
-        attention_out = self.attention.forward(x)
-
-        # Residual Connection + LayerNorm
-        out = self.layer_norm.forward(x + attention_out)
-        return out
-
-    def backward(self, grad_output: Tensor) -> Tensor:
-        """
-        역전파 과정
-
-        Args:
-            grad_output (Tensor): 상위 레이어로부터 전달된 그래디언트
-
-        Returns:
-            Tensor: 하위 레이어로 전달할 그래디언트
-        """
-        raise NotImplementedError
-        grad = self.layer_norm.backward(grad_output)
-        return grad
     
 class FeedForward:
     def __init__(self, embed_size: int, forward_expansion: int):
@@ -661,7 +591,7 @@ class OutputProjection:
         return torch.matmul(x, self.W)
 
 class TransformerEncoderBlock:
-    def __init__(self, embed_size: int, heads: int, ff_dim: int, vocab_size: int):
+    def __init__(self, embed_size: int, heads: int, ff_expand_dim: int, vocab_size: int):
         """
         Transformer Encoder Block 초기화
 
@@ -671,7 +601,7 @@ class TransformerEncoderBlock:
             ff_dim (int): Feed Forward 내부 차원
         """
         self.attention = AttentionBlock(embed_size, heads)
-        self.feed_forward = FeedForward(embed_size, ff_dim)
+        self.feed_forward = FeedForward(embed_size, ff_expand_dim)
         self.layer_norm_1 = LayerNorm(embed_size)
         self.layer_norm_2 = LayerNorm(embed_size)
 
@@ -717,6 +647,8 @@ class GPT:
             self.transformer_blocks.append(TransformerEncoderBlock(embed_size, heads, ff_dim, vocab_size))
         self.output = OutputProjection(embed_size, vocab_size)
         self.train:bool = True
+        self.loss = CrossEntropyLoss()
+        self.param_count = embed_size * vocab_size + embed_size * max_seq_len + embed_size * embed_size * 4 * num_blocks + embed_size * vocab_size
         
     def forward(self, x: Tensor, temperature:float = 1.0, pos: PositionalEncoding=None) -> Tensor:
         """
@@ -739,15 +671,17 @@ class GPT:
             x = block.forward(x)
         
         x = self.output.forward(x)
+
+        x = torch.softmax(x / temperature, dim=-1)
         
         if self.train:
             return x
         else:
             # returns a predicted token with temperature applied
-            prob = torch.softmax(x[-1] / temperature, dim=-1)
-            return torch.multinomial(prob, num_samples=1)
-    
-    def generate(self, x: Tensor, temperature:float = 1.0, max_tokens:int = 100) -> Tensor:
+            prob = torch.distributions.Categorical(probs=x[-1])
+            return prob.sample()
+        
+    def generate(self, x: Tensor, temperature: float = 1.0, max_tokens: int = 100) -> Tensor:
         """
         Generate a sequence of tokens
         
@@ -757,17 +691,30 @@ class GPT:
             max_tokens (int): Maximum number of tokens to generate
         
         Returns:
-            Tensor: Generated token sequence [seq_length]
+            Tensor: Generated token sequence [seq_length + max_tokens]
         """
         if self.train:
             raise ValueError("Model must be in eval mode for generation")
 
         for _ in range(max_tokens):
-            print(x.dim())
-            pos = PositionalEncoding(x.dim(), self.embed_size)
-            x = torch.cat([x, self.forward(x, temperature, pos).unsqueeze(0)])
+            seq_length = x.shape[0]
+            pos = PositionalEncoding(seq_length, self.embed_size)  # Update positional encoding for the current sequence length
+            next_token = self.forward(x, temperature, pos)  # Generate the next token
+            x = torch.cat([x, next_token])  # Append the generated token to the sequence
+
+        return x.tolist()
+    
+    def backward(self, logit:Tensor, lables:Tensor, *args, **kwargs) -> None:
+        """
+        Backward pass through the model
+        """
+        raise NotImplementedError
+        # Encode the lables into one-hot encoding
+        one_hot = torch.zeros_like(logit)
+        one_hot.scatter_(1, lables.unsqueeze(1), 1)
+
+        # compute cross-entropy loss
         
-        return x
 
 def main() -> None:
     # Set random seed
@@ -780,14 +727,18 @@ def main() -> None:
     print(f"Decoded: {decoded}")
 
     vocab_size = len(tokenizer.token_map)
-    embedding_dim = 512
-    max_seq_len = 100
-    heads = 8
-    ff_dim = 512
+    embedding_dim = 1024
+    max_seq_len = 1024
+    heads = 16
+    ff_expand_dim = 4
     input_indices = torch.tensor(encoded)
 
     # Create GPT model
-    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_dim, num_blocks=2)
+    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_expand_dim, num_blocks=8)
+    sample_logit = Gpt_Object.forward(input_indices)
+    with open("./sample_logit.json", "w", encoding='utf-8') as f:
+        json.dump(sample_logit.tolist(), f, indent=4, ensure_ascii=False)
+    
     Gpt_Object.train = False
     pos = PositionalEncoding(max_seq_len, embedding_dim)
     output = Gpt_Object.forward(input_indices, pos=pos)
@@ -795,11 +746,9 @@ def main() -> None:
     print(f"GPT output shape: {output.shape}")
     print(f"Decoded token: {tokenizer.decode([output.item()])}")
 
-    # # Generate a sequence
-    # generated = Gpt_Object.generate(input_indices, temperature=1, max_tokens=100)
-    # print(f"Generated sequence: {tokenizer.decode(generated)}")
-
-    
+    # Generate a sequence
+    generated = Gpt_Object.generate(input_indices, temperature=1, max_tokens=100)
+    print(f"Generated sequence: {tokenizer.decode(generated)}")
 
 if __name__ == "__main__":
     main()

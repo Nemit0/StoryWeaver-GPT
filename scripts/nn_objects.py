@@ -270,7 +270,6 @@ class LayerNorm:
         # 단순화를 위해 역전파는 gamma에 대한 기울기만 처리
         return grad_output * self.gamma
 
-
 class NeuralNetwork:
     def __init__(self,
                  layer_sizes: list[int],
