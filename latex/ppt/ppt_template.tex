@@ -1,0 +1,232 @@
+\documentclass[
+    10pt % font size
+    16:9, % 1920x1080
+]{beamer}
+% \usetheme{default}
+% \usetheme{Boadilla}
+ \usetheme{Madrid}
+% \usetheme{Montpellier}
+% \usetheme{Warsaw}
+% \usetheme{Copenhagen}
+% \usetheme{Goettingen}
+% \usetheme{Hannover}
+% \usetheme{Berkeley}
+ 
+% \usecolortheme{crane}
+ % \beamertemplatesolidbackgroundcolor{craneorange!25}
+ 
+ % Define custom colors
+\definecolor{customGreen}{RGB}{0,128,0} % A medium green
+\definecolor{customDarkGreen}{RGB}{0,100,0} % A darker green
+
+% Apply the custom colors
+\usecolortheme{default} % Start with the default color theme to apply custom colors on top
+\setbeamercolor{structure}{fg=customGreen}
+\setbeamercolor{background canvas}{bg=white} % Set main background to white
+\setbeamercolor{title}{bg=customDarkGreen,fg=white} % Title slide background
+\setbeamercolor{frametitle}{bg=customGreen,fg=white} % Frame titles
+
+% Custom footline with an image on the bottom right
+\addtobeamertemplate{footline}{}{%
+  \hfill%
+  \raisebox{5mm}[0pt][10pt]{%
+    \includegraphics[height=1cm]{kyu_univ_logo.png}%
+  }\hspace*{5mm}
+}
+
+\title{StoryWeaverGPT}
+\subtitle{Dataset, Tokenizer and Embedding}
+
+\author{Group1}
+
+\begin{document}
+
+\frame{\titlepage} % # 1
+\section[Outline]{}
+\frame{\tableofcontents}
+
+\section{The Problem}
+ 
+ 
+\frame % # 2
+{
+  \frametitle{A pesky problem}
+ 
+Your paycheck has been held up, and they keep asking,
+
+\medskip
+
+ ``Are you really a mathematician?''
+
+\bigskip
+\pause
+
+How to convince them?
+
+\medskip
+\pause
+
+What to do?
+
+\medskip
+\pause
+
+And then the idea hits you - you'll show them you can solve a quadratic equation!
+
+\medskip
+\pause
+
+If that doesn't convince the admin type, what will?
+
+  
+\vfill   
+}
+ 
+ \frame % # 2
+{
+  \frametitle{Choosing a quadratic equation}
+
+Now, it is only a matter to select a quadratic equation which will impress them.
+
+\pause
+
+\begin{enumerate}
+\item $x^2  = 0$ \pause (nah, too obvious. it would be shameful if this worked)
+\pause 
+\item $x^2 -2x +1 = 0$ \pause (more of the same)
+\pause
+\item $x^2 -3x -1 = 0$ \pause (sort of fancy... just right!)
+\end{enumerate}
+
+}
+
+
+\section{Picturing the Solution}
+ 
+\frame % 3
+{
+  \frametitle{Grab your calculators:}
+ 
+ A picture may be worth a thousand words, but is it worth   a thousand bucks?
+ 
+ \medskip
+ \pause
+ 
+ Let's try! If they buy this, we are done. So plot $y = x^2 -3x -1$
+ 
+ \pause
+ 
+
+ 
+ \vfill   
+
+}
+
+ \frame % # 2
+{
+  \frametitle{Not even close...}
+
+``You want money for your one lousy graph?''
+
+\pause
+
+\bigskip
+
+``Give the solution to 10 decimals, and we'll show you the money!''
+
+\pause
+
+\bigskip
+
+``Oh, for  ~ @\#\%\*\&\@ ~ sake!''
+}
+
+\section{Some Algebra}
+
+\frame % 3
+{
+  \frametitle{factor, factor, complete...}
+ 
+ 
+\begin{eqnarray*}
+ 0 & = & x^2 -3x -1  \\ \pause
+ 0 & = &  x^2 -3x + (-3/2)^2 - (3/2)^2 -1  \\ \pause
+ 0 & = &  (x - 3/2)^2  -9/4 - 4/4  \\ \pause
+ 0 & = &   (x - 3/2)^2  -13/4  
+\end{eqnarray*}
+
+ 
+
+}
+
+\frame % 3
+{
+  \frametitle{Progress}
+ 
+ 
+Now let's solve it:
+
+\begin{eqnarray*}
+ 0 =  (x - 3/2)^2  -9/4 - 4/4 ~ & \Longrightarrow &  ~ (x-3/2)^2 = 13/4 \\ \pause
+ & \Longrightarrow &  ~ (x-3/2) = \pm \sqrt{13/4} \\ \pause
+ & \Longrightarrow &  ~ x =  3/2\pm \sqrt{13/4} 
+ \end{eqnarray*}
+ 
+ \pause
+
+Think this is enough to get the money?
+
+
+\medskip
+\pause
+
+Not likely...
+
+}
+
+\frame % 3
+{
+  \frametitle{Pay Up!}
+ 
+ There are two solutions: 
+ 
+ \bigskip
+ \pause
+ 
+ $ x =  3/2 +  \sqrt{13/4}$, or
+  $$x =  3.302775637731994646559610633735247973125648286922623106355226528113583474146 505222602309541009245359$$
+  
+  \bigskip
+  \pause
+  
+and    $ x =  3/2 -  \sqrt{13/4}$, or
+  $$x = -0.302775637731994646559610633735247973125648286922623106355226528113583474146505222602309541009245359$$
+
+}
+
+\section{The Formula}
+
+\frame % 3
+{
+  \frametitle{Mathematical Proof}
+ 
+ The final proof that we are Mathematicians?
+ 
+\bigskip
+ \pause
+ 
+ Give them the Magic Formula,  
+ $$ ax^2 + bx + c = 0 \Longrightarrow x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
+ 
+\bigskip
+ \pause
+ 
+ and tell them to try this first next time...
+ 
+
+}
+
+ 
+\end{document}
+       
+ 

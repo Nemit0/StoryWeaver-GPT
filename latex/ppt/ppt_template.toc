@@ -1,0 +1,4 @@
+\beamer@sectionintoc {2}{The Problem}{3}{0}{1}
+\beamer@sectionintoc {3}{Picturing the Solution}{15}{0}{2}
+\beamer@sectionintoc {4}{Some Algebra}{21}{0}{3}
+\beamer@sectionintoc {5}{The Formula}{33}{0}{4}
