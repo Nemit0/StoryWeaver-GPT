@@ -45,7 +45,7 @@
 \section[Outline]{}
 \frame{\tableofcontents}
 
-\section{The Problem}
+\section{Introduction}
  
  
 \frame % # 2
@@ -59,151 +59,200 @@
   
 \vfill   
 }
+
+\section{Dataset}
  
  \frame % # 2
 {
-  \frametitle{Choosing a quadratic equation}
-
-Now, it is only a matter to select a quadratic equation which will impress them.
-
-\pause
-
-\begin{enumerate}
-\item $x^2  = 0$ \pause (nah, too obvious. it would be shameful if this worked)
-\pause 
-\item $x^2 -2x +1 = 0$ \pause (more of the same)
-\pause
-\item $x^2 -3x -1 = 0$ \pause (sort of fancy... just right!)
-\end{enumerate}
-
+  \frametitle{Dataset: WritingPrompts Dataset}
+  % image
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{dataset.png}
+    \caption{WritingPrompts Dataset}
+  \end{figure}
 }
 
 
-\section{Picturing the Solution}
+\section{Tokenizer}
  
-\frame % 3
+\frame
 {
-  \frametitle{Grab your calculators:}
- 
- A picture may be worth a thousand words, but is it worth   a thousand bucks?
- 
- \medskip
- \pause
- 
- Let's try! If they buy this, we are done. So plot $y = x^2 -3x -1$
- 
- \pause
- 
-
- 
- \vfill   
-
-}
-
- \frame % # 2
-{
-  \frametitle{Not even close...}
-
-``You want money for your one lousy graph?''
-
-\pause
-
-\bigskip
-
-``Give the solution to 10 decimals, and we'll show you the money!''
-
-\pause
-
-\bigskip
-
-``Oh, for  ~ @\#\%\*\&\@ ~ sake!''
-}
-
-\section{Some Algebra}
-
-\frame % 3
-{
-  \frametitle{factor, factor, complete...}
- 
- 
-\begin{eqnarray*}
- 0 & = & x^2 -3x -1  \\ \pause
- 0 & = &  x^2 -3x + (-3/2)^2 - (3/2)^2 -1  \\ \pause
- 0 & = &  (x - 3/2)^2  -9/4 - 4/4  \\ \pause
- 0 & = &   (x - 3/2)^2  -13/4  
-\end{eqnarray*}
-
- 
-
-}
-
-\frame % 3
-{
-  \frametitle{Progress}
- 
- 
-Now let's solve it:
-
-\begin{eqnarray*}
- 0 =  (x - 3/2)^2  -9/4 - 4/4 ~ & \Longrightarrow &  ~ (x-3/2)^2 = 13/4 \\ \pause
- & \Longrightarrow &  ~ (x-3/2) = \pm \sqrt{13/4} \\ \pause
- & \Longrightarrow &  ~ x =  3/2\pm \sqrt{13/4} 
- \end{eqnarray*}
- 
- \pause
-
-Think this is enough to get the money?
-
-
-\medskip
-\pause
-
-Not likely...
-
-}
-
-\frame % 3
-{
-  \frametitle{Pay Up!}
- 
- There are two solutions: 
- 
- \bigskip
- \pause
- 
- $ x =  3/2 +  \sqrt{13/4}$, or
-  $$x =  3.302775637731994646559610633735247973125648286922623106355226528113583474146 505222602309541009245359$$
+  \frametitle{Tokenizer: BPE Tokenizer}
   
-  \bigskip
-  \pause
+  \begin{itemize}
+      \item Iteratively merge the most frequent pairs of tokens to build a subword vocabulary.
+  \end{itemize}
+
+  \begin{table}[]
+      \centering
+      \begin{tabular}{|c|c|c|}
+          \hline
+          Iteration & Tokens & Most Frequent Pair \\ \hline
+          Initial   & h e l l o & l l \\ \hline
+          1         & h e ll o  & e ll \\ \hline
+          2         & h ell o   & h ell \\ \hline
+          3         & hell o    & None \\ \hline
+      \end{tabular}
+      \caption{Example of BPE Tokenization for "hello"}
+  \end{table}
   
-and    $ x =  3/2 -  \sqrt{13/4}$, or
-  $$x = -0.302775637731994646559610633735247973125648286922623106355226528113583474146505222602309541009245359$$
-
+  \begin{itemize}
+      \item Key Idea: The sequence evolves by merging pairs to minimize the overall vocabulary size while retaining meaning.
+  \end{itemize}
 }
 
-\section{The Formula}
+\frame{
+  \frametitle{Tokenizer: BPE Tokenizer}
+  \begin{itemize}
+      \item BPE Tokenizer performs better when trained on same dataset as dataset the main model is being trained on
+      \item Our tokenizers are trained on the WritingPrompts dataset, with 8192 merges.
+      \item With multiprocessing training took 28 hours.
+  \end{itemize}
+}
 
-\frame % 3
+
+ \frame
 {
-  \frametitle{Mathematical Proof}
- 
- The final proof that we are Mathematicians?
- 
-\bigskip
- \pause
- 
- Give them the Magic Formula,  
- $$ ax^2 + bx + c = 0 \Longrightarrow x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
- 
-\bigskip
- \pause
- 
- and tell them to try this first next time...
- 
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{tokenizer_init.png}
+    \caption{Initializing Tokenizer}
+  \end{figure}
 
 }
 
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{train_tokenizer.png}
+    \caption{Counting Frequency}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{train_tokenizer2.png}
+    \caption{Performing Merges}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{get_pair_count.png}
+    \caption{get\_pair\_count}
+  \end{figure}
+}
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{merge_vocab_single.png}
+    \caption{merge\_pair}
+  \end{figure}
+}
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{merge_pair.png}
+    \caption{merge\_pair}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Tokenizer Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{tokenized_model.png}
+    \caption{Sample model}
+  \end{figure}
+}
+
+\section{Embedding}
+
+\frame
+{
+  \frametitle{Embedding}
+  \begin{itemize}
+      \item Embedding is a linear map from a one-hot encoded vector to  a dense vector.
+      \item $E: \mathbb{R}^{V} \rightarrow \mathbb{R}^{d}$
+      \item Where V is vocab dimension, and d is the embedding dimension.
+      \item This is first linear map/layer applied to tokenized input, and is learned with the model.
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.3\textwidth]{model.png}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Embedding}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{3blue1brown.png}
+    \caption{Demonstration of Embedding space}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Embedding}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{similarity.png}
+  \end{figure}
+}
+
+\frame
+{
+  \frametitle{Embedding}
+  \begin{itemize}
+      \item Outside NLP/NLG model, embeddings are used for similarity, clustering, and visualization.
+      \item RAG, Retrival Augmented generation, uses embeddings to retrive relevant information.
+  \end{itemize}
+}
+
+\frame
+{
+  \frametitle{Positional Encoding}
+  \begin{itemize}
+      \item Positional encoding is added to embeddings to give the model information about the position of the token.
+      \item Positional encoding is a sine and cosine function of the position.
+      \item $$P[i, j] = \begin{cases}
+        \sin\left(\frac{i}{10000^{2j/d}}\right) & \text{if j is even} \\
+        \cos\left(\frac{i}{10000^{2j/d}}\right) & \text{if j is odd}
+      \end{cases}$$
+  \end{itemize}
+}
+
+\frame
+{
+  \frametitle{Embedding and Positional Encoding Code}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{embedding_code.png}
+    \caption{Embedding Class}
+  \end{figure}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{pos_code.png}
+    \caption{Positional Encoding}
+  \end{figure}
+}
  
 \end{document}
        

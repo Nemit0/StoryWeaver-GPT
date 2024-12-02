@@ -1,4 +1,4 @@
-\beamer@sectionintoc {2}{The Problem}{3}{0}{1}
-\beamer@sectionintoc {3}{Picturing the Solution}{11}{0}{2}
-\beamer@sectionintoc {4}{Some Algebra}{17}{0}{3}
-\beamer@sectionintoc {5}{The Formula}{29}{0}{4}
+\beamer@sectionintoc {2}{Introduction}{3}{0}{1}
+\beamer@sectionintoc {3}{Dataset}{4}{0}{2}
+\beamer@sectionintoc {4}{Tokenizer}{5}{0}{3}
+\beamer@sectionintoc {5}{Embedding}{14}{0}{4}

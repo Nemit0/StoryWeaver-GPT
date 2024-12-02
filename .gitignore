@@ -6,6 +6,8 @@ __pycache__/
 # Custom data files
 .data
 data
+.test
+test
 .test.py
 .loss.png
 # C extensions
