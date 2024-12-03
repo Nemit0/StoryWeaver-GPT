@@ -2,6 +2,7 @@ import json
 import re
 import os
 import torch
+import pickle
 from torch import tensor, Tensor
 from typing import List, Dict, Tuple
 from multiprocessing import Pool
@@ -147,7 +148,7 @@ class MultiHeadAttention:
 
             # Gradient w.r.t. attention weights and V_heads[i]
             grad_attn_weights = grad_attn_output @ self.V_heads[i].transpose(0, 1)  # (seq_len, seq_len)
-            grad_V = self.attention_weights[i].transpose(0, 1) @ grad_attn_output  # Corrected line
+            grad_V = self.attention_weights[i].transpose(0, 1) @ grad_attn_output  # (seq_len, head_dim)
 
             # Softmax backward
             attn_weights = self.attention_weights[i]
@@ -327,7 +328,7 @@ class GPT:
         for _ in range(num_blocks):
             self.transformer_blocks.append(TransformerEncoderBlock(embed_size, heads, ff_dim))
         self.output = OutputProjection(embed_size, vocab_size)
-        self.train: bool = True
+        self.train_mode: bool = True
         self.param_count = embed_size * vocab_size + embed_size * max_seq_len + embed_size * embed_size * 4 * num_blocks + embed_size * vocab_size
 
     def forward(self, x: Tensor, temperature: float = 1.0) -> Tensor:
@@ -343,7 +344,6 @@ class GPT:
 
     def backward(self, probs: Tensor, labels: Tensor) -> None:
         # Compute gradient of loss w.r.t. logits
-        # Assuming labels are indices of the target tokens
         batch_size, vocab_size = probs.shape
         labels_one_hot = torch.zeros_like(probs)
         labels_one_hot[range(batch_size), labels] = 1
@@ -358,7 +358,6 @@ class GPT:
             grad_output = block.backward(grad_output)
 
         # Backpropagate through positional encoding (no parameters)
-        # Since positional encoding is additive and has no parameters, we can skip backward here
 
         # Backpropagate through token embedding
         self.token_embedding.backward(grad_output)
@@ -430,7 +429,108 @@ class GPT:
 
             block.feed_forward.fc2.grad_weights.zero_()
             block.feed_forward.fc2.grad_bias.zero_()
+    
+    def check_gradients(self):
+        nan_in_gradients = False
+        # Check token embedding gradients
+        if torch.any(torch.isnan(self.token_embedding.grad_weights)):
+            print("NaN detected in token_embedding.grad_weights")
+            nan_in_gradients = True
+        # TODO: Check other params
+        return nan_in_gradients
 
+    def check_parameters(self):
+        nan_in_params = False
+        # Check token embedding weights
+        if torch.any(torch.isnan(self.token_embedding.weights)):
+            print("NaN detected in token_embedding.weights")
+            nan_in_params = True
+        # TODO: Check other params
+        return nan_in_params
+    
+    def clip_gradients(self, max_norm):
+        # Clip token embedding gradients
+        torch.nn.utils.clip_grad_norm_([self.token_embedding.grad_weights], max_norm)
+        # Clip output projection gradients
+        torch.nn.utils.clip_grad_norm_([self.output.grad_W], max_norm)
+        # Clip gradients in transformer blocks
+        for block in self.transformer_blocks:
+            attention = block.attention.attention
+            for i in range(attention.heads):
+                torch.nn.utils.clip_grad_norm_([attention.grad_W_Q[i]], max_norm)
+                torch.nn.utils.clip_grad_norm_([attention.grad_W_K[i]], max_norm)
+                torch.nn.utils.clip_grad_norm_([attention.grad_W_V[i]], max_norm)
+                torch.nn.utils.clip_grad_norm_([attention.grad_W_O[i]], max_norm)
+            # Clip layer norm gradients
+            torch.nn.utils.clip_grad_norm_([block.attention.layer_norm.grad_gamma, block.attention.layer_norm.grad_beta], max_norm)
+            torch.nn.utils.clip_grad_norm_([block.layer_norm_1.grad_gamma, block.layer_norm_1.grad_beta], max_norm)
+            torch.nn.utils.clip_grad_norm_([block.layer_norm_2.grad_gamma, block.layer_norm_2.grad_beta], max_norm)
+            # Clip feed-forward gradients
+            torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
+            torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
+
+    def train(self, data: List[Tensor], epochs: int, learning_rate: float) -> List[float]:
+        loss_history = []
+        for epoch in tqdm(range(epochs)):
+            epoch_loss = 0.0
+            for input_indices in data:
+                labels = input_indices[1:]  # Shifted input indices (next tokens)
+                input_indices = input_indices[:-1]  # Input tokens
+
+                # Forward pass
+                probs = self.forward(input_indices)
+                # Add epsilon to prevent log(0)
+                eps = 1e-10
+                probs_correct = probs[range(len(labels)), labels] + eps
+                loss = -torch.log(probs_correct).mean()
+                epoch_loss += loss.item()
+
+                # Backward pass
+                self.backward(probs, labels)
+
+                # Gradient Clipping
+                self.clip_gradients(max_norm=1.0)
+
+                # Update parameters
+                self.update_parameters(learning_rate)
+
+                # Check for NaNs in parameters
+                if self.check_parameters():
+                    print("NaN detected in parameters. Stopping training.")
+                    return loss_history
+
+                # Zero gradients
+                self.zero_grad()
+
+            avg_loss = epoch_loss / len(data)
+            loss_history.append(avg_loss)
+            print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.4f}")
+
+            # Early stopping if loss is NaN
+            if torch.isnan(torch.tensor(avg_loss)):
+                print("Loss became NaN. Stopping training.")
+                break
+
+        return loss_history
+    
+def generate_sequence(model, initial_input, max_length):
+    model.eval_mode = True  # Ensure the model is in evaluation mode
+    input_indices = initial_input.clone()
+    
+    for _ in range(max_length - len(initial_input)):
+        # Forward pass
+        probs = model.forward(input_indices)
+        # Get the last token's probability distribution
+        next_token_probs = probs[-1]
+        # Sample the next token (you can also use argmax for deterministic results)
+        next_token = torch.argmax(next_token_probs)
+        # Append the next token to the input sequence
+        input_indices = torch.cat((input_indices, next_token.unsqueeze(0)), dim=0)
+        # If input_indices length exceeds max_seq_len, truncate it
+        if len(input_indices) > model.max_seq_len:
+            input_indices = input_indices[-model.max_seq_len:]
+    return input_indices
+    
 def main() -> None:
     # Set random seed
     torch.manual_seed(42)
@@ -441,49 +541,53 @@ def main() -> None:
     decoded = tokenizer.decode(encoded)
     print(f"Decoded: {decoded}")
 
+
     vocab_size = len(tokenizer.token_map)
-    embedding_dim = 64  # Reduced size for demonstration
-    max_seq_len = 20  # Reduced sequence length for demonstration
-    heads = 4
+    embedding_dim = 512  # Reduced size for demonstration
+    max_seq_len = 512  # Reduced sequence length for demonstration
+    heads = 8
     ff_expand_dim = 4
-    input_indices = torch.tensor(encoded)
+
+    # Load sample data
+    with open(os.path.join(os.getcwd(), "input.txt"), "r", encoding="utf-8") as f:
+        text = f.read()
+    
+    data = tokenizer.encode(text)
+    dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
+
+    dataset = dataset[:100]
 
     # Create GPT model
-    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_expand_dim, num_blocks=2)
-    Gpt_Object.train = True
+    Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_expand_dim, num_blocks=3)
+    Gpt_Object.train_mode = True
 
-    # Adjust input_indices and labels
-    labels = input_indices[1:]  # Shifted input indices (length 5)
-    input_indices = input_indices[:-1]  # Adjusted input indices (length 5)
+    # Train the model
+    epochs = 1000
+    learning_rate = 0.0001
+    loss_history = Gpt_Object.train(dataset, epochs, learning_rate)
 
-    # Forward pass
+    # After training, test the model
+    input_indices = torch.tensor(encoded[:-1])  # Input tokens
+    labels = torch.tensor(encoded[1:])  # Target tokens
+
     probs = Gpt_Object.forward(input_indices)
     predicted_tokens = torch.argmax(probs, dim=-1)
-    print(f"Predicted Tokens: {predicted_tokens.tolist()}")
+    print(f"Predicted Tokens after training: {predicted_tokens.tolist()}")
 
-    # Compute loss (cross-entropy)
+    # Compute loss
     loss = -torch.log(probs[range(len(labels)), labels]).mean()
-    print(f"Loss before update: {loss.item()}")
+    print(f"Final Loss: {loss.item()}")
 
-    # Backward pass
-    Gpt_Object.backward(probs, labels)
+    # Decode the predicted tokens
+    predicted_text = tokenizer.decode(predicted_tokens.tolist())
+    print(f"Predicted Text: {predicted_text}")
 
-    # Perform a single parameter update
-    learning_rate = 0.001
-    Gpt_Object.update_parameters(learning_rate)
+    initial_input = torch.tensor(encoded[:-1])  # Input tokens
+    generated_sequence = generate_sequence(Gpt_Object, initial_input, max_length=512)
 
-    # Zero gradients
-    Gpt_Object.zero_grad()
-
-    # Forward pass after update
-    probs_after_update = Gpt_Object.forward(input_indices)
-    predicted_tokens_after_update = torch.argmax(probs_after_update, dim=-1)
-    print(f"Predicted Tokens after update: {predicted_tokens_after_update.tolist()}")
-
-    # Compute loss after update
-    loss_after_update = -torch.log(probs_after_update[range(len(labels)), labels]).mean()
-    print(f"Loss after update: {loss_after_update.item()}")
-
+    # Decode the generated sequence
+    generated_text = tokenizer.decode(generated_sequence.tolist())
+    print(f"Generated Text: {generated_text}")
 
 if __name__ == "__main__":
     main()
