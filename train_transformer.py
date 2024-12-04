@@ -63,7 +63,7 @@ def main():
     print(len(dataset))
 
     # Train the model
-    epochs = 50
+    epochs = 500
     learning_rate = 0.001
     logging.log(logging.INFO, "Training model for %d epochs with learning rate %f", epochs + train_config['epochs'], learning_rate)
     loss_history = GptObj.train(dataset, epochs, learning_rate)
