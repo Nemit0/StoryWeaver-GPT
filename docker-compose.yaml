@@ -9,11 +9,14 @@ services:
       - .:/app
       - ./data:/data
       - ./model:/model
+      - ./src:/src
+      - ./logs:/logs
     working_dir: /app
-    command: python3 ./.data/transformer.py
-    # deploy:
-    #   resources:
-    #     devices:
-    #       - driver: nvidia
-    #         count: 1
-    #         capabilities: [gpu]
+    command: python3 ./train_transformer.py
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

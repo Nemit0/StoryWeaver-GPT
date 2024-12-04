@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import time
 from typing import List, Dict, Tuple
 from multiprocessing import Pool
 from tqdm import tqdm
@@ -172,18 +173,32 @@ class BytePairTokenizer:
                     i += 1
             pairs = self._get_pairs(word)
         return word
+
+    def process_word(self, word):
+        chars = list(word) + ['</w>']
+        return self._apply_bpe(chars)
     
     def split_text(self, text: str) -> List[str]:
         """
         Split text into BPE tokens with leading whitespace preserved
         """
+        start_time = time.time()
         tokens = []
         words = re.findall(r'\s*\S+|\s+', text)
-        for word in words:
-            chars = list(word) + ['</w>']
-            bpe_word = self._apply_bpe(chars)
-            tokens.extend(bpe_word)
-        return tokens
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        if elapsed_time > 10:
+            print("Finished splitting text into words in", elapsed_time, "seconds")
+
+        start_time = time.time()
+        with Pool() as pool:
+            tokens = pool.map(self.process_word, words)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        if elapsed_time > 10:
+            print("Finished processing words in", elapsed_time, "seconds")
+        
+        return [token for word in tokens for token in word]
     
     def encode(self, data: str) -> List[int]:
         """

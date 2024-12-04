@@ -1,4 +1,3 @@
-# define the services
 services:
   cuda_container:
     container_name: cuda_container_demo

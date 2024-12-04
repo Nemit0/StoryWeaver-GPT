@@ -5,12 +5,15 @@ WORKDIR /app
 
 COPY . /app
 
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip wget vim curl && \
-    apt-get clean && \
+RUN apt update && apt install -y wget vim python3 python3-pip curl && \
+    # echo 'alias python="python3"' >> ~/.bashrc && \
+    # echo 'alias pip="pip3"' >> ~/.bashrc && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN python3 --version && \
-    pip3 install -r requirements.txt
+RUN python3 --version
 
-# CMD ["python3", "app.py"]
+RUN . ~/.bashrc
+
+# Install dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
