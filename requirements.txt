@@ -2,8 +2,5 @@ pandas
 numpy
 tqdm
 matplotlib
-torch
 rich
-torchvision
-torchaudio
 kagglehub

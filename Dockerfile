@@ -1,5 +1,5 @@
 # Dockerfile
-FROM nvidia/cuda:12.2.0-base-ubuntu22.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 WORKDIR /app
 
@@ -12,5 +12,7 @@ RUN apt-get update && \
 
 RUN python3 --version && \
     pip3 install -r requirements.txt
+
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # CMD ["python3", "app.py"]
