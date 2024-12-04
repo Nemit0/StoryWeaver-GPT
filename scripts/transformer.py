@@ -24,8 +24,8 @@ else:
 
 class LinearLayer:
     def __init__(self, input_size: int, output_size: int):
-        self.weights = torch.randn(input_size, output_size) * 0.01
-        self.bias = torch.zeros(output_size)
+        self.weights = torch.randn(input_size, output_size, dtype=torch.float64, requires_grad=False) * 0.01
+        self.bias = torch.zeros(output_size, dtype=torch.float64, requires_grad=False)
         self.grad_weights = torch.zeros_like(self.weights)
         self.grad_bias = torch.zeros_like(self.bias)
 
@@ -53,7 +53,7 @@ class Embedding:
     def __init__(self, input_dim: int, output_dim: int) -> None:
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.weights: Tensor = torch.randn(input_dim, output_dim) * 0.01
+        self.weights: Tensor = torch.randn(input_dim, output_dim, dtype=torch.float64, requires_grad=False) * 0.01
         self.grad_weights: Tensor = torch.zeros_like(self.weights)
 
     def forward(self, input_indices: Tensor) -> Tensor:
@@ -70,7 +70,7 @@ class Embedding:
 class PositionalEncoding:
     def __init__(self, max_seq_len: int, embed_size: int):
         self.embed_size = embed_size
-        self.pos_encoding = torch.zeros(max_seq_len, embed_size)
+        self.pos_encoding = torch.zeros(max_seq_len, embed_size, dtype=torch.float64, requires_grad=False)
 
         position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, embed_size, 2) * (-torch.log(torch.tensor(10000.0)) / embed_size))
@@ -92,10 +92,10 @@ class MultiHeadAttention:
             raise ValueError("Embedding dimension must be divisible by the number of heads")
 
         # Initialize weights for each head
-        self.W_Q = [torch.randn(embed_size, self.head_dim) * 0.01 for _ in range(heads)]
-        self.W_K = [torch.randn(embed_size, self.head_dim) * 0.01 for _ in range(heads)]
-        self.W_V = [torch.randn(embed_size, self.head_dim) * 0.01 for _ in range(heads)]
-        self.W_O = [torch.randn(self.head_dim, embed_size) * 0.01 for _ in range(heads)]
+        self.W_Q = [torch.randn(embed_size, self.head_dim, dtype=torch.float64, requires_grad=False) * 0.01 for _ in range(heads)]
+        self.W_K = [torch.randn(embed_size, self.head_dim, dtype=torch.float64, requires_grad=False) * 0.01 for _ in range(heads)]
+        self.W_V = [torch.randn(embed_size, self.head_dim, dtype=torch.float64, requires_grad=False) * 0.01 for _ in range(heads)]
+        self.W_O = [torch.randn(self.head_dim, embed_size, dtype=torch.float64, requires_grad=False) * 0.01 for _ in range(heads)]
 
         # Initialize gradients
         self.grad_W_Q = [torch.zeros_like(w) for w in self.W_Q]
@@ -173,8 +173,8 @@ class MultiHeadAttention:
 
 class AttentionBlock:
     def __init__(self, embed_size: int, heads: int):
-        self.attention = MultiHeadAttention(embed_size, heads)
-        self.layer_norm = LayerNorm(embed_size)
+        self.attention:MultiHeadAttention = MultiHeadAttention(embed_size, heads)
+        self.layer_norm:LayerNorm = LayerNorm(embed_size)
 
     def forward(self, x: Tensor) -> Tensor:
         self.x = x  # Save input for backward
@@ -258,7 +258,7 @@ class FeedForward:
 
 class OutputProjection:
     def __init__(self, embed_size: int, vocab_size: int):
-        self.W = torch.randn(embed_size, vocab_size) * 0.01
+        self.W = torch.randn(embed_size, vocab_size, dtype=torch.float64, requires_grad=False) * 0.01
         self.grad_W = torch.zeros_like(self.W)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -319,17 +319,64 @@ class TransformerEncoderBlock:
 
 class GPT:
     def __init__(self, vocab_size: int, embed_size: int, max_seq_len: int, heads: int, ff_dim: int, num_blocks: int):
-        self.embed_size = embed_size
-        self.max_seq_len = max_seq_len
-        self.num_blocks = num_blocks
-        self.token_embedding = Embedding(vocab_size, embed_size)
-        self.positional_encoding = PositionalEncoding(max_seq_len, embed_size)
-        self.transformer_blocks = []
+        self.embed_size: int = embed_size
+        self.max_seq_len: int = max_seq_len
+        self.num_blocks: int = num_blocks
+        self.token_embedding: Embedding = Embedding(vocab_size, embed_size)
+        self.positional_encoding:PositionalEncoding = PositionalEncoding(max_seq_len, embed_size)
+        self.transformer_blocks: List[TransformerEncoderBlock] = []
         for _ in range(num_blocks):
             self.transformer_blocks.append(TransformerEncoderBlock(embed_size, heads, ff_dim))
-        self.output = OutputProjection(embed_size, vocab_size)
+        self.output: OutputProjection = OutputProjection(embed_size, vocab_size)
         self.train_mode: bool = True
-        self.param_count = embed_size * vocab_size + embed_size * max_seq_len + embed_size * embed_size * 4 * num_blocks + embed_size * vocab_size
+        self.param_and_grads: Dict = {
+            "embedding_weight" : self.token_embedding.weights,
+            "embedding_grad" : self.token_embedding.grad_weights,
+            "transformer_block" : [
+                {
+                    "attention" : {
+                        "W_Q" : block.attention.attention.W_Q,
+                        "W_K" : block.attention.attention.W_K,
+                        "W_V" : block.attention.attention.W_V,
+                        "W_O" : block.attention.attention.W_O,
+                        "grad_W_Q" : block.attention.attention.grad_W_Q,
+                        "grad_W_K" : block.attention.attention.grad_W_K,
+                        "grad_W_V" : block.attention.attention.grad_W_V,
+                        "grad_W_O" : block.attention.attention.grad_W_O,
+                    },
+                    "layernorm_1" : {
+                        "gamma" : block.layer_norm_1.gamma,
+                        "beta" : block.layer_norm_1.beta,
+                        "grad_gamma" : block.layer_norm_1.grad_gamma,
+                        "grad_beta" : block.layer_norm_1.grad_beta,
+                    },
+                    "FeedForward" : {
+                        "fc1" : {
+                            "weights" : block.feed_forward.fc1.weights,
+                            "bias" : block.feed_forward.fc1.bias,
+                            "grad_weights" : block.feed_forward.fc1.grad_weights,
+                            "grad_bias" : block.feed_forward.fc1.grad_bias,
+                        },
+                        "fc2" : {
+                            "weights" : block.feed_forward.fc2.weights,
+                            "bias" : block.feed_forward.fc2.bias,
+                            "grad_weights" : block.feed_forward.fc2.grad_weights,
+                            "grad_bias" : block.feed_forward.fc2.grad_bias,
+                        }
+                    },
+                    "layernorm_2" : {
+                        "gamma" : block.layer_norm_2.gamma,
+                        "beta" : block.layer_norm_2.beta,
+                        "grad_gamma" : block.layer_norm_2.grad_gamma,
+                        "grad_beta" : block.layer_norm_2.grad_beta,
+                    }
+                } for block in self.transformer_blocks
+            ],
+            "output" : {
+                "W" : self.output.W,
+                "grad_W" : self.output.grad_W,
+            }
+        }
 
     def forward(self, x: Tensor, temperature: float = 1.0) -> Tensor:
         self.input_indices = x
@@ -356,8 +403,6 @@ class GPT:
         # Backpropagate through Transformer blocks
         for block in reversed(self.transformer_blocks):
             grad_output = block.backward(grad_output)
-
-        # Backpropagate through positional encoding (no parameters)
 
         # Backpropagate through token embedding
         self.token_embedding.backward(grad_output)
@@ -534,19 +579,18 @@ def generate_sequence(model, initial_input, max_length):
 def main() -> None:
     # Set random seed
     torch.manual_seed(42)
-    tokenizer = load_tokenizer()
+    tokenizer = load_tokenizer('./model/tokenizer_shakesphere.json')
     text = 'Hello World!'
     encoded = tokenizer.encode(text)
     print(f"Encoded: {encoded}")
     decoded = tokenizer.decode(encoded)
     print(f"Decoded: {decoded}")
 
-
     vocab_size = len(tokenizer.token_map)
-    embedding_dim = 512  # Reduced size for demonstration
+    embedding_dim = 768  # Reduced size for demonstration
     max_seq_len = 512  # Reduced sequence length for demonstration
     heads = 8
-    ff_expand_dim = 4
+    ff_expand_dim = 2
 
     # Load sample data
     with open(os.path.join(os.getcwd(), "input.txt"), "r", encoding="utf-8") as f:
@@ -554,16 +598,18 @@ def main() -> None:
     
     data = tokenizer.encode(text)
     dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
+    print(len(dataset))
 
-    dataset = dataset[:100]
+    dataset = dataset
+    print(len(dataset))
 
     # Create GPT model
     Gpt_Object = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_expand_dim, num_blocks=3)
     Gpt_Object.train_mode = True
 
     # Train the model
-    epochs = 1000
-    learning_rate = 0.0001
+    epochs = 100
+    learning_rate = 0.01
     loss_history = Gpt_Object.train(dataset, epochs, learning_rate)
 
     # After training, test the model
@@ -584,7 +630,7 @@ def main() -> None:
 
     initial_input = torch.tensor(encoded[:-1])  # Input tokens
     generated_sequence = generate_sequence(Gpt_Object, initial_input, max_length=512)
-
+    print(generated_sequence)
     # Decode the generated sequence
     generated_text = tokenizer.decode(generated_sequence.tolist())
     print(f"Generated Text: {generated_text}")
