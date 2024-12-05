@@ -27,3 +27,9 @@ pip install -r requirements.txt
 #### Using docker
 
 1. If there is a gpu with cuda enviromnent, make sure you have necessary nvidia drivers and docker installed, and edit the Dockerfile and docker-compose.yaml to your version of cuda.
+
+#### Using HPC
+
+```bash
+sbatch -a 1 -p 24_Fall_Student_1 -G1 test.sh 
+```
