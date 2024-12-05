@@ -1,6 +1,6 @@
 services:
   cuda_container:
-    container_name: mlgroup1
+    container_name: transformer
     image: nvidia/cuda:12.2.0-base-ubuntu22.04
     build:
       context: .

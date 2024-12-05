@@ -1,11 +1,6 @@
-import json
-import re
-import os
 import torch
-import pickle
 from torch import tensor, Tensor
-from typing import List, Dict, Tuple
-from multiprocessing import Pool
+from typing import List, Dict
 from tqdm import tqdm
 
 ### CUDA SETUP ###
@@ -47,6 +42,31 @@ class ReLUActivation:
         grad_input = grad_output.clone()
         grad_input[self.input <= 0] = 0
         return grad_input
+
+class GeLUActivation:
+    def forward(self, x: Tensor) -> Tensor:
+        self.input = x
+        c = torch.tensor(0.7978845608, dtype=x.dtype, device=x.device) # sqrt(2/pi) approximated
+        a = torch.tensor(0.044715, dtype=x.dtype, device=x.device) # 2/(pi*sqrt(2)) approximated
+        self.c = c
+        self.a = a
+        self.s = c * (x + a * x ** 3)
+        self.tanh_s = torch.tanh(self.s)
+        y = 0.5 * x * (1.0 + self.tanh_s)
+        return y
+
+    def backward(self, grad_output: Tensor) -> Tensor:
+        x = self.input
+        c = self.c
+        a = self.a
+        s = self.s
+        tanh_s = self.tanh_s
+        sech2_s = 1.0 - tanh_s ** 2
+        ds_dx = c * (1.0 + 3.0 * a * x ** 2)
+        dy_dx = 0.5 * (1.0 + tanh_s + x * sech2_s * ds_dx)
+        grad_input = grad_output * dy_dx
+        return grad_input
+
 
 class Embedding:
     def __init__(self, input_dim: int, output_dim: int) -> None:
@@ -321,6 +341,8 @@ class GPT:
         self.embed_size: int = embed_size
         self.max_seq_len: int = max_seq_len
         self.num_blocks: int = num_blocks
+        self.heads: int = heads
+        self.ff_dim: int = ff_dim
         self.token_embedding: Embedding = Embedding(vocab_size, embed_size)
         self.positional_encoding:PositionalEncoding = PositionalEncoding(max_seq_len, embed_size)
         self.transformer_blocks: List[TransformerEncoderBlock] = []

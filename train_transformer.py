@@ -8,13 +8,6 @@ from src.tokenizer import *
 from src.nn_objects import *
 from src.utils import *
 
-if torch.cuda.is_available():
-    print("CUDA is available")
-    torch.set_default_device('cuda')
-else:
-    print("CUDA is not available")
-    torch.set_default_device('cpu')
-
 # Configure logging
 log_filename = f"./logs/{datetime.now().strftime('%Y%m%d%H%M%S')}_transformer.log"
 logging.basicConfig(
@@ -24,6 +17,18 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+if not os.path.exists('./logs'):
+    os.makedirs('./logs')
+
+if torch.cuda.is_available():
+    print("CUDA is available")
+    torch.set_default_device('cuda')
+    logging.log(logging.INFO, f"CUDA is available, using defice {torch.cuda.get_device_name()}")
+else:
+    print("CUDA is not available")
+    torch.set_default_device('cpu')
+    logging.log(logging.INFO, "CUDA is not available")
+
 def main():
     tokenizer = load_tokenizer('./model/tokenizer_shakesphere.json')
     vocab_size = len(tokenizer.token_map)
@@ -32,6 +37,7 @@ def main():
     if os.path.exists('./logs/train_config.json'):
         with open('./logs/train_config.json', 'r') as f:
             train_config = json.load(f)
+        logging.info(f"Loaded training config from file, picking up from epoch {train_config['epochs']}")
     else:
         train_config = {
             'epochs': 0,
@@ -41,6 +47,11 @@ def main():
     if os.path.exists('./model/gpt_model_shakesphere.pth'):
         GptObj = GPT.load_model('./model/gpt_model_shakesphere.pth')
         logging.log(logging.INFO, "Loaded model from file")
+        embedding_dim = GptObj.embed_size
+        max_seq_len = GptObj.max_seq_len
+        heads = GptObj.heads
+        ff_expand_dim = GptObj.ff_dim
+        
     else:
         embedding_dim = 512
         max_seq_len = 1024
