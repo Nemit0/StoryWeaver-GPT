@@ -31,5 +31,5 @@ pip install -r requirements.txt
 #### Using HPC
 
 ```bash
-sbatch -a 1 -p 24_Fall_Student_1 -G1 test.sh 
+sbatch -a 1 -p 24_Fall_Student_1 -G1 test.sh
 ```

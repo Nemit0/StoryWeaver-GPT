@@ -8,6 +8,8 @@ from src.tokenizer import *
 from src.nn_objects import *
 from src.utils import *
 
+print("Starting training...")
+
 # Configure logging
 log_filename = f"./logs/{datetime.now().strftime('%Y%m%d%H%M%S')}_transformer.log"
 logging.basicConfig(
@@ -19,6 +21,7 @@ logging.basicConfig(
 
 if not os.path.exists('./logs'):
     os.makedirs('./logs')
+print(f"Logging to file {log_filename}")
 
 if torch.cuda.is_available():
     print("CUDA is available")
@@ -30,6 +33,7 @@ else:
     logging.log(logging.INFO, "CUDA is not available")
 
 def main():
+    print("Starting training...")
     tokenizer = load_tokenizer('./model/tokenizer_shakesphere.json')
     vocab_size = len(tokenizer.token_map)
     logging.info("Loaded tokenizer with vocab size %d", vocab_size)
