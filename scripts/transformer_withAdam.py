@@ -345,7 +345,7 @@ class AdamOptimizer:
         """
         self.t += 1
         for key in self.params.keys():
-            grad = self.grads.get(f"{key}_grad")
+            grad = self.grads.get(key)
             if grad is None:
                 continue
 
@@ -507,7 +507,10 @@ class GPT:
         """
         Updates parameters using the Adam optimizer.
         """
+        print("Before update:", torch.norm(self.flat_params["embedding_weight"]))
         self.optimizer.step()
+
+        print("After update:", torch.norm(self.flat_params["embedding_weight"]))
 
     def zero_grad(self):
         """
