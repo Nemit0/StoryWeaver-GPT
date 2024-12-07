@@ -762,3 +762,4 @@ def generate_sequence(model, initial_input, max_length):
         if len(input_indices) > model.max_seq_len:
             input_indices = input_indices[-model.max_seq_len:]
     return input_indices
+

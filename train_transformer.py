@@ -34,12 +34,17 @@ else:
 
 def main():
     print("Starting training...")
-    tokenizer = load_tokenizer('./model/tokenizer_shakesphere.json')
+    tokenizer_path = './model/tokenizer_shakesphere.json'
+    model_path = './model/gpt_model_shakesphere1.pth'
+    data_path = './.data/input.txt'
+    config_path = './config/config.json'
+
+    tokenizer = load_tokenizer(tokenizer_path)
     vocab_size = len(tokenizer.token_map)
     logging.info("Loaded tokenizer with vocab size %d", vocab_size)
 
-    if os.path.exists('./logs/train_config.json'):
-        with open('./logs/train_config.json', 'r') as f:
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
             train_config = json.load(f)
         logging.info(f"Loaded training config from file, picking up from epoch {train_config['epochs']}")
     else:
@@ -48,7 +53,7 @@ def main():
             'loss': []
         }
 
-    if os.path.exists('./model/gpt_model_shakesphere1.pth'):
+    if os.path.exists(model_path):
         GptObj = GPT.load_model('./model/gpt_model_shakesphere1.pth')
         logging.log(logging.INFO, "Loaded model from file")
         embedding_dim = GptObj.embed_size

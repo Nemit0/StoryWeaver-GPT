@@ -1,6 +1,0 @@
-gpu01
-Using NVIDIA GeForce RTX 3090
-CUDA is available
-409
-409
-  0%|          | 0/500 [00:00<?, ?it/s]  0%|          | 1/500 [01:20<11:08:43, 80.41s/it]slurmstepd: error: *** JOB 4864 ON gpu01 CANCELLED AT 2024-12-05T16:00:00 ***
