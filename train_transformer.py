@@ -67,9 +67,9 @@ def main():
         ff_expand_dim = GptObj.ff_dim
         lr = GptObj.lr
     else:
-        embedding_dim = 16
-        max_seq_len = 16
-        heads = 1
+        embedding_dim =768
+        max_seq_len = 2048
+        heads = 8
         ff_expand_dim = 2
         logging.log(logging.INFO, "Creating new model")
         GptObj = GPT(vocab_size, 
@@ -84,19 +84,19 @@ def main():
 
     # Load data
     with open(os.path.join(data_path), "r", encoding="utf-8") as f:
-        text = f.read()[:100]
+        text = f.read()
 
     data = tokenizer.encode(text)
     dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
 
     # For demonstration, we can use a smaller dataset
-    dataset = dataset[:10]
+    dataset = dataset
     print(len(dataset))
     print(f"Dataset size: {len(dataset)}")
 
     # Train the model
     epochs = 500
-    logging.log(logging.INFO, "Training model for %d epochs with learning rate %f", epochs + train_config['epochs'])
+    logging.log(logging.INFO, f"Current epoch: {train_config['epochs']}, Training for {epochs} more epochs with learning rate {lr}")
     loss_history = GptObj.train_model(dataset, epochs)
 
     print(f"Final loss: {loss_history[-1]}")
