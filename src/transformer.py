@@ -1,6 +1,6 @@
 import torch
 from torch import tensor, Tensor
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from tqdm import tqdm
 
 ### CUDA SETUP ###
@@ -259,7 +259,7 @@ class LayerNorm:
 class FeedForward:
     def __init__(self, embed_size: int, forward_expansion: int):
         self.fc1 = LinearLayer(embed_size, embed_size * forward_expansion)
-        self.activation = ReLUActivation()
+        self.activation = GeLUActivation()
         self.fc2 = LinearLayer(embed_size * forward_expansion, embed_size)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -289,6 +289,114 @@ class OutputProjection:
         self.grad_W += self.input.transpose(0, 1) @ grad_output
         grad_input = grad_output @ self.W.transpose(0, 1)
         return grad_input
+
+class AdamOptimizer:
+    def __init__(self, params: Dict[str, Tensor|Dict], grads: Dict[str, Tensor], lr: float = 1e-3, 
+                 betas: Tuple[float, float] = (0.9, 0.999), eps: float = 1e-8):
+        """
+        Initializes the Adam optimizer.
+
+        Args:
+            params (Dict[str, Tensor]): Dictionary of parameters to optimize.
+            grads (Dict[str, Tensor]): Dictionary of corresponding gradients.
+            lr (float): Learning rate.
+            betas (Tuple[float, float]): Coefficients used for computing running averages.
+            eps (float): Term added to the denominator to improve numerical stability.
+        """
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.params = params
+        self.grads = grads
+        self.m = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.v = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.t = 0  # Time step
+
+    def step(self):
+        """
+        Performs a single optimization step (parameter update).
+        """
+        self.t += 1
+        for key in self.params.keys():
+            grad = self.grads.get(f"{key}_grad")
+            if grad is None:
+                continue
+
+            # Update biased first moment estimate
+            self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grad
+
+            # Update biased second raw moment estimate
+            self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grad ** 2)
+
+            # Compute bias-corrected first moment estimate
+            m_hat = self.m[key] / (1 - self.beta1 ** self.t)
+
+            # Compute bias-corrected second raw moment estimate
+            v_hat = self.v[key] / (1 - self.beta2 ** self.t)
+
+            # Update parameters
+            self.params[key] -= self.lr * m_hat / (torch.sqrt(v_hat) + self.eps)
+
+    def zero_grad(self):
+        """
+        Resets all gradients to zero.
+        """
+        for grad in self.grads.values():
+            grad.zero_()
+
+class AdamOptimizer:
+    def __init__(self, params: Dict[str, Tensor], grads: Dict[str, Tensor], lr: float = 1e-3, 
+                 betas: Tuple[float, float] = (0.9, 0.999), eps: float = 1e-8):
+        """
+        Initializes the Adam optimizer.
+
+        Args:
+            params (Dict[str, Tensor]): Dictionary of parameters to optimize.
+            grads (Dict[str, Tensor]): Dictionary of corresponding gradients.
+            lr (float): Learning rate.
+            betas (Tuple[float, float]): Coefficients used for computing running averages.
+            eps (float): Term added to the denominator to improve numerical stability.
+        """
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.params = params
+        self.grads = grads
+        self.m = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.v = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.t = 0  # Time step
+
+    def step(self):
+        """
+        Performs a single optimization step (parameter update).
+        """
+        self.t += 1
+        for key in self.params.keys():
+            grad = self.grads.get(key)
+            if grad is None:
+                continue
+
+            # Update biased first moment estimate
+            self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grad
+
+            # Update biased second raw moment estimate
+            self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grad ** 2)
+
+            # Compute bias-corrected first moment estimate
+            m_hat = self.m[key] / (1 - self.beta1 ** self.t)
+
+            # Compute bias-corrected second raw moment estimate
+            v_hat = self.v[key] / (1 - self.beta2 ** self.t)
+
+            # Update parameters
+            self.params[key] -= self.lr * m_hat / (torch.sqrt(v_hat) + self.eps)
+
+    def zero_grad(self):
+        """
+        Resets all gradients to zero.
+        """
+        for grad in self.grads.values():
+            grad.zero_()
 
 class TransformerEncoderBlock:
     def __init__(self, embed_size: int, heads: int, ff_expand_dim: int):
@@ -337,67 +445,123 @@ class TransformerEncoderBlock:
         return grad_x
 
 class GPT:
-    def __init__(self, vocab_size: int, embed_size: int, max_seq_len: int, heads: int, ff_dim: int, num_blocks: int):
+    def __init__(self, vocab_size: int, embed_size: int, max_seq_len: int, heads: int, ff_dim: int, num_blocks: int, lr: float = 1e-3):
         self.embed_size: int = embed_size
         self.max_seq_len: int = max_seq_len
         self.num_blocks: int = num_blocks
-        self.heads: int = heads
-        self.ff_dim: int = ff_dim
         self.token_embedding: Embedding = Embedding(vocab_size, embed_size)
-        self.positional_encoding:PositionalEncoding = PositionalEncoding(max_seq_len, embed_size)
+        self.positional_encoding: PositionalEncoding = PositionalEncoding(max_seq_len, embed_size)
         self.transformer_blocks: List[TransformerEncoderBlock] = []
         for _ in range(num_blocks):
             self.transformer_blocks.append(TransformerEncoderBlock(embed_size, heads, ff_dim))
         self.output: OutputProjection = OutputProjection(embed_size, vocab_size)
         self.train_mode: bool = True
+
+        # Parameter and gradient tracking
         self.param_and_grads: Dict = {
-            "embedding_weight" : self.token_embedding.weights,
-            "embedding_grad" : self.token_embedding.grad_weights,
-            "transformer_block" : [
+            "embedding_weight": self.token_embedding.weights,
+            "embedding_weight_grad": self.token_embedding.grad_weights,
+            "transformer_block": [
                 {
-                    "attention" : {
-                        "W_Q" : block.attention.attention.W_Q,
-                        "W_K" : block.attention.attention.W_K,
-                        "W_V" : block.attention.attention.W_V,
-                        "W_O" : block.attention.attention.W_O,
-                        "grad_W_Q" : block.attention.attention.grad_W_Q,
-                        "grad_W_K" : block.attention.attention.grad_W_K,
-                        "grad_W_V" : block.attention.attention.grad_W_V,
-                        "grad_W_O" : block.attention.attention.grad_W_O,
+                    "attention": {
+                        "W_Q": block.attention.attention.W_Q,
+                        "W_K": block.attention.attention.W_K,
+                        "W_V": block.attention.attention.W_V,
+                        "W_O": block.attention.attention.W_O,
+                        "W_Q_grad": block.attention.attention.grad_W_Q,
+                        "W_K_grad": block.attention.attention.grad_W_K,
+                        "W_V_grad": block.attention.attention.grad_W_V,
+                        "W_O_grad": block.attention.attention.grad_W_O,
                     },
-                    "layernorm_1" : {
-                        "gamma" : block.layer_norm_1.gamma,
-                        "beta" : block.layer_norm_1.beta,
-                        "grad_gamma" : block.layer_norm_1.grad_gamma,
-                        "grad_beta" : block.layer_norm_1.grad_beta,
+                    "layernorm_1": {
+                        "gamma": block.layer_norm_1.gamma,
+                        "beta": block.layer_norm_1.beta,
+                        "gamma_grad": block.layer_norm_1.grad_gamma,
+                        "beta_grad": block.layer_norm_1.grad_beta,
                     },
-                    "FeedForward" : {
-                        "fc1" : {
-                            "weights" : block.feed_forward.fc1.weights,
-                            "bias" : block.feed_forward.fc1.bias,
-                            "grad_weights" : block.feed_forward.fc1.grad_weights,
-                            "grad_bias" : block.feed_forward.fc1.grad_bias,
-                        },
-                        "fc2" : {
-                            "weights" : block.feed_forward.fc2.weights,
-                            "bias" : block.feed_forward.fc2.bias,
-                            "grad_weights" : block.feed_forward.fc2.grad_weights,
-                            "grad_bias" : block.feed_forward.fc2.grad_bias,
-                        }
+                    "FeedForward": {
+                        "fc1_weights": block.feed_forward.fc1.weights,
+                        "fc1_bias": block.feed_forward.fc1.bias,
+                        "fc1_weights_grad": block.feed_forward.fc1.grad_weights,
+                        "fc1_bias_grad": block.feed_forward.fc1.grad_bias,
+                        "fc2_weights": block.feed_forward.fc2.weights,
+                        "fc2_bias": block.feed_forward.fc2.bias,
+                        "fc2_weights_grad": block.feed_forward.fc2.grad_weights,
+                        "fc2_bias_grad": block.feed_forward.fc2.grad_bias,
                     },
-                    "layernorm_2" : {
-                        "gamma" : block.layer_norm_2.gamma,
-                        "beta" : block.layer_norm_2.beta,
-                        "grad_gamma" : block.layer_norm_2.grad_gamma,
-                        "grad_beta" : block.layer_norm_2.grad_beta,
+                    "layernorm_2": {
+                        "gamma": block.layer_norm_2.gamma,
+                        "beta": block.layer_norm_2.beta,
+                        "gamma_grad": block.layer_norm_2.grad_gamma,
+                        "beta_grad": block.layer_norm_2.grad_beta,
                     }
                 } for block in self.transformer_blocks
             ],
-            "output" : {
-                "W" : self.output.W,
-                "grad_W" : self.output.grad_W,
-            }
+            "output_weight": self.output.W,
+            "output_weight_grad": self.output.grad_W,
         }
+
+        # Prepare parameters and grads
+        param_dict = {
+            "embedding_weight": self.token_embedding.weights,
+            "embedding_weight_grad": self.token_embedding.grad_weights,
+            "output_weight": self.output.W,
+            "output_weight_grad": self.output.grad_W
+        }
+
+        # Add transformer block parameters
+        for i, block in enumerate(self.transformer_blocks):
+            # Attention Parameters
+            # Flatten Multihead attention parameters
+            for head_idx in range(block.attention.attention.heads):
+                param_dict[f"transformer_block_{i}_attention_W_Q_{head_idx}"] = block.attention.attention.W_Q[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_Q_{head_idx}_grad"] = block.attention.attention.grad_W_Q[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_K_{head_idx}"] = block.attention.attention.W_K[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_K_{head_idx}_grad"] = block.attention.attention.grad_W_K[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_V_{head_idx}"] = block.attention.attention.W_V[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_V_{head_idx}_grad"] = block.attention.attention.grad_W_V[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_O_{head_idx}"] = block.attention.attention.W_O[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_O_{head_idx}_grad"] = block.attention.attention.grad_W_O[head_idx]
+
+            # Layer Norm in AttentionBlock
+            param_dict[f"transformer_block_{i}_attention_layernorm_gamma"] = block.attention.layer_norm.gamma
+            param_dict[f"transformer_block_{i}_attention_layernorm_gamma_grad"] = block.attention.layer_norm.grad_gamma
+            param_dict[f"transformer_block_{i}_attention_layernorm_beta"] = block.attention.layer_norm.beta
+            param_dict[f"transformer_block_{i}_attention_layernorm_beta_grad"] = block.attention.layer_norm.grad_beta
+
+            # Layer Norm 1
+            param_dict[f"transformer_block_{i}_layernorm_1_gamma"] = block.layer_norm_1.gamma
+            param_dict[f"transformer_block_{i}_layernorm_1_gamma_grad"] = block.layer_norm_1.grad_gamma
+            param_dict[f"transformer_block_{i}_layernorm_1_beta"] = block.layer_norm_1.beta
+            param_dict[f"transformer_block_{i}_layernorm_1_beta_grad"] = block.layer_norm_1.grad_beta
+
+            # Layer Norm 2
+            param_dict[f"transformer_block_{i}_layernorm_2_gamma"] = block.layer_norm_2.gamma
+            param_dict[f"transformer_block_{i}_layernorm_2_gamma_grad"] = block.layer_norm_2.grad_gamma
+            param_dict[f"transformer_block_{i}_layernorm_2_beta"] = block.layer_norm_2.beta
+            param_dict[f"transformer_block_{i}_layernorm_2_beta_grad"] = block.layer_norm_2.grad_beta
+
+            # FeedForward
+            param_dict[f"transformer_block_{i}_fc1_weights"] = block.feed_forward.fc1.weights
+            param_dict[f"transformer_block_{i}_fc1_weights_grad"] = block.feed_forward.fc1.grad_weights
+            param_dict[f"transformer_block_{i}_fc1_bias"] = block.feed_forward.fc1.bias
+            param_dict[f"transformer_block_{i}_fc1_bias_grad"] = block.feed_forward.fc1.grad_bias
+
+            param_dict[f"transformer_block_{i}_fc2_weights"] = block.feed_forward.fc2.weights
+            param_dict[f"transformer_block_{i}_fc2_weights_grad"] = block.feed_forward.fc2.grad_weights
+            param_dict[f"transformer_block_{i}_fc2_bias"] = block.feed_forward.fc2.bias
+            param_dict[f"transformer_block_{i}_fc2_bias_grad"] = block.feed_forward.fc2.grad_bias
+
+        # Separate params and grads for optimizer
+        params = {}
+        grads = {}
+        for k, v in param_dict.items():
+            if "_grad" in k:
+                grads[k.replace("_grad", "")] = v
+            else:
+                params[k] = v
+
+        self.optimizer = AdamOptimizer(params=params, grads=grads, lr=lr)
 
     def forward(self, x: Tensor, temperature: float = 1.0) -> Tensor:
         self.input_indices = x
@@ -428,39 +592,17 @@ class GPT:
         # Backpropagate through token embedding
         self.token_embedding.backward(grad_output)
 
-    def update_parameters(self, learning_rate: float):
-        # Update token embedding weights
-        self.token_embedding.weights -= learning_rate * self.token_embedding.grad_weights
+    def update_parameters(self):
+        """
+        Updates parameters using the Adam optimizer.
+        """
+        self.optimizer.step()
 
-        # Update output projection weights
-        self.output.W -= learning_rate * self.output.grad_W
-
-        # Update transformer blocks parameters
-        for block in self.transformer_blocks:
-            # Update attention parameters
-            attention = block.attention.attention
-            for i in range(attention.heads):
-                attention.W_Q[i] -= learning_rate * attention.grad_W_Q[i]
-                attention.W_K[i] -= learning_rate * attention.grad_W_K[i]
-                attention.W_V[i] -= learning_rate * attention.grad_W_V[i]
-                attention.W_O[i] -= learning_rate * attention.grad_W_O[i]
-
-            # Update layer normalization parameters
-            block.attention.layer_norm.gamma -= learning_rate * block.attention.layer_norm.grad_gamma
-            block.attention.layer_norm.beta -= learning_rate * block.attention.layer_norm.grad_beta
-
-            block.layer_norm_1.gamma -= learning_rate * block.layer_norm_1.grad_gamma
-            block.layer_norm_1.beta -= learning_rate * block.layer_norm_1.grad_beta
-
-            block.layer_norm_2.gamma -= learning_rate * block.layer_norm_2.grad_gamma
-            block.layer_norm_2.beta -= learning_rate * block.layer_norm_2.grad_beta
-
-            # Update feed forward parameters
-            block.feed_forward.fc1.weights -= learning_rate * block.feed_forward.fc1.grad_weights
-            block.feed_forward.fc1.bias -= learning_rate * block.feed_forward.fc1.grad_bias
-
-            block.feed_forward.fc2.weights -= learning_rate * block.feed_forward.fc2.grad_weights
-            block.feed_forward.fc2.bias -= learning_rate * block.feed_forward.fc2.grad_bias
+    def zero_grad(self):
+        """
+        Resets all gradients using the Adam optimizer.
+        """
+        self.optimizer.zero_grad()
 
     def zero_grad(self):
         # Zero gradients in token embedding
@@ -535,7 +677,7 @@ class GPT:
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
 
-    def train(self, data: List[Tensor], epochs: int, learning_rate: float) -> List[float]:
+    def train_model(self, data: List[Tensor], epochs: int, learning_rate: float) -> List[float]:
         loss_history = []
         for epoch in tqdm(range(epochs)):
             epoch_loss = 0.0
@@ -557,8 +699,8 @@ class GPT:
                 # Gradient Clipping
                 self.clip_gradients(max_norm=1.0)
 
-                # Update parameters
-                self.update_parameters(learning_rate)
+                # Update parameters using Adam
+                self.update_parameters()
 
                 # Check for NaNs in parameters
                 if self.check_parameters():
@@ -579,13 +721,29 @@ class GPT:
 
         return loss_history
     
-    def save_model(self, path:str) -> None:
-        torch.save(self, path)
+    def eval_mode(self):
+        """
+        Sets the model to evaluation mode.
+        """
+        self.train_mode = False   
 
-    @staticmethod
-    def load_model(path:str):
-        model = torch.load(path)
-        return model
+    def generate_sequence(self, initial_input, max_length):
+        self.eval_mode()
+        input_indices = initial_input.clone()
+
+        for _ in range(max_length - len(initial_input)):
+            # Forward pass
+            probs = self.forward(input_indices)
+            # Get the last token's probability distribution
+            next_token_probs = probs[-1]
+            # Sample the next token (you can also use argmax for deterministic results)
+            next_token = torch.argmax(next_token_probs)
+            # Append the next token to the input sequence
+            input_indices = torch.cat((input_indices, next_token.unsqueeze(0)), dim=0)
+            # If input_indices length exceeds max_seq_len, truncate it
+            if len(input_indices) > self.max_seq_len:
+                input_indices = input_indices[-self.max_seq_len:]
+        return input_indices
     
 def generate_sequence(model, initial_input, max_length):
     model.eval_mode = True  # Ensure the model is in evaluation mode
