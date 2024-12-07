@@ -10,7 +10,7 @@ data
 test
 .test.py
 .loss.png
-# model/checkpoints
+model/checkpoints
 # C extensions
 *.so
 
