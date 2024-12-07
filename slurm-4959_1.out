@@ -1,7 +1,0 @@
-gpu01
-Using NVIDIA GeForce RTX 3090
-Starting training...
-Logging to file ./logs/20241207162958_transformer.log
-CUDA is available
-Starting training...
-Finished splitting text into words in 33.76786923408508 seconds

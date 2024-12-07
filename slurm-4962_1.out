@@ -1,0 +1,12 @@
+gpu01
+Using NVIDIA GeForce RTX 3090
+Starting training...
+Logging to file ./logs/20241207175730_transformer.log
+CUDA is available
+Starting training...
+Finished splitting text into words in 34.367716789245605 seconds
+Finished processing words in 752.9263603687286 seconds
+Function encode executed in 0:13:46.080191
+153895
+Dataset size: 153895
+  0%|          | 0/500 [00:00<?, ?it/s]
