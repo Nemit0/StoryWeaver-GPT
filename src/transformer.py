@@ -344,6 +344,60 @@ class AdamOptimizer:
         for grad in self.grads.values():
             grad.zero_()
 
+class AdamOptimizer:
+    def __init__(self, params: Dict[str, Tensor], grads: Dict[str, Tensor], lr: float = 1e-3, 
+                 betas: Tuple[float, float] = (0.9, 0.999), eps: float = 1e-8):
+        """
+        Initializes the Adam optimizer.
+
+        Args:
+            params (Dict[str, Tensor]): Dictionary of parameters to optimize.
+            grads (Dict[str, Tensor]): Dictionary of corresponding gradients.
+            lr (float): Learning rate.
+            betas (Tuple[float, float]): Coefficients used for computing running averages.
+            eps (float): Term added to the denominator to improve numerical stability.
+        """
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.params = params
+        self.grads = grads
+        self.m = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.v = {key: torch.zeros_like(param) for key, param in self.params.items()}
+        self.t = 0  # Time step
+
+    def step(self):
+        """
+        Performs a single optimization step (parameter update).
+        """
+        self.t += 1
+        for key in self.params.keys():
+            grad = self.grads.get(key)
+            if grad is None:
+                continue
+
+            # Update biased first moment estimate
+            self.m[key] = self.beta1 * self.m[key] + (1 - self.beta1) * grad
+
+            # Update biased second raw moment estimate
+            self.v[key] = self.beta2 * self.v[key] + (1 - self.beta2) * (grad ** 2)
+
+            # Compute bias-corrected first moment estimate
+            m_hat = self.m[key] / (1 - self.beta1 ** self.t)
+
+            # Compute bias-corrected second raw moment estimate
+            v_hat = self.v[key] / (1 - self.beta2 ** self.t)
+
+            # Update parameters
+            self.params[key] -= self.lr * m_hat / (torch.sqrt(v_hat) + self.eps)
+
+    def zero_grad(self):
+        """
+        Resets all gradients to zero.
+        """
+        for grad in self.grads.values():
+            grad.zero_()
+
 class TransformerEncoderBlock:
     def __init__(self, embed_size: int, heads: int, ff_expand_dim: int):
         self.attention = AttentionBlock(embed_size, heads)
@@ -443,55 +497,71 @@ class GPT:
                     }
                 } for block in self.transformer_blocks
             ],
-            "output": {
-                "W": self.output.W,
-                "W_grad": self.output.grad_W,
-            }
+            "output_weight": self.output.W,
+            "output_weight_grad": self.output.grad_W,
         }
 
+        # Prepare parameters and grads
+        param_dict = {
+            "embedding_weight": self.token_embedding.weights,
+            "embedding_weight_grad": self.token_embedding.grad_weights,
+            "output_weight": self.output.W,
+            "output_weight_grad": self.output.grad_W
+        }
 
-        # Flatten parameters and gradients
-        self.flat_params, self.flat_grads = self.flatten_params_and_grads(self.param_and_grads)
+        # Add transformer block parameters
+        for i, block in enumerate(self.transformer_blocks):
+            # Attention Parameters
+            # Flatten Multihead attention parameters
+            for head_idx in range(block.attention.attention.heads):
+                param_dict[f"transformer_block_{i}_attention_W_Q_{head_idx}"] = block.attention.attention.W_Q[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_Q_{head_idx}_grad"] = block.attention.attention.grad_W_Q[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_K_{head_idx}"] = block.attention.attention.W_K[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_K_{head_idx}_grad"] = block.attention.attention.grad_W_K[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_V_{head_idx}"] = block.attention.attention.W_V[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_V_{head_idx}_grad"] = block.attention.attention.grad_W_V[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_O_{head_idx}"] = block.attention.attention.W_O[head_idx]
+                param_dict[f"transformer_block_{i}_attention_W_O_{head_idx}_grad"] = block.attention.attention.grad_W_O[head_idx]
 
-        # Initialize Adam optimizer
-        self.optimizer = AdamOptimizer(params=self.flat_params, grads=self.flat_grads, lr=lr)
+            # Layer Norm in AttentionBlock
+            param_dict[f"transformer_block_{i}_attention_layernorm_gamma"] = block.attention.layer_norm.gamma
+            param_dict[f"transformer_block_{i}_attention_layernorm_gamma_grad"] = block.attention.layer_norm.grad_gamma
+            param_dict[f"transformer_block_{i}_attention_layernorm_beta"] = block.attention.layer_norm.beta
+            param_dict[f"transformer_block_{i}_attention_layernorm_beta_grad"] = block.attention.layer_norm.grad_beta
 
-    def flatten_params_and_grads(self, nested_dict: Dict, parent_key: str = '', sep: str = '.') -> Tuple[Dict[str, Tensor], Dict[str, Tensor]]:
-        """
-        Flattens nested parameters and gradients into flat dictionaries.
+            # Layer Norm 1
+            param_dict[f"transformer_block_{i}_layernorm_1_gamma"] = block.layer_norm_1.gamma
+            param_dict[f"transformer_block_{i}_layernorm_1_gamma_grad"] = block.layer_norm_1.grad_gamma
+            param_dict[f"transformer_block_{i}_layernorm_1_beta"] = block.layer_norm_1.beta
+            param_dict[f"transformer_block_{i}_layernorm_1_beta_grad"] = block.layer_norm_1.grad_beta
 
-        Args:
-            nested_dict (Dict): Nested dictionary of parameters and gradients.
-            parent_key (str): Base key string.
-            sep (str): Separator between keys.
+            # Layer Norm 2
+            param_dict[f"transformer_block_{i}_layernorm_2_gamma"] = block.layer_norm_2.gamma
+            param_dict[f"transformer_block_{i}_layernorm_2_gamma_grad"] = block.layer_norm_2.grad_gamma
+            param_dict[f"transformer_block_{i}_layernorm_2_beta"] = block.layer_norm_2.beta
+            param_dict[f"transformer_block_{i}_layernorm_2_beta_grad"] = block.layer_norm_2.grad_beta
 
-        Returns:
-            Tuple[Dict[str, Tensor], Dict[str, Tensor]]: Flat parameter and gradient dictionaries.
-        """
-        flat_params = {}
-        flat_grads = {}
+            # FeedForward
+            param_dict[f"transformer_block_{i}_fc1_weights"] = block.feed_forward.fc1.weights
+            param_dict[f"transformer_block_{i}_fc1_weights_grad"] = block.feed_forward.fc1.grad_weights
+            param_dict[f"transformer_block_{i}_fc1_bias"] = block.feed_forward.fc1.bias
+            param_dict[f"transformer_block_{i}_fc1_bias_grad"] = block.feed_forward.fc1.grad_bias
 
-        def recurse(d, parent_key):
-            for key, value in d.items():
-                new_key = f"{parent_key}{sep}{key}" if parent_key else key
-                if isinstance(value, torch.Tensor):
-                    if key.endswith('_grad'):
-                        # It's a gradient
-                        flat_grads[new_key.replace('_grad', '')] = value
-                    else:
-                        # It's a parameter
-                        flat_params[new_key] = value
-                elif isinstance(value, dict):
-                    recurse(value, new_key)
-                elif isinstance(value, list):
-                    for idx, item in enumerate(value):
-                        recurse(item, f"{new_key}[{idx}]")
-                else:
-                    raise ValueError(f"Unsupported type {type(value)} for key {new_key}")
+            param_dict[f"transformer_block_{i}_fc2_weights"] = block.feed_forward.fc2.weights
+            param_dict[f"transformer_block_{i}_fc2_weights_grad"] = block.feed_forward.fc2.grad_weights
+            param_dict[f"transformer_block_{i}_fc2_bias"] = block.feed_forward.fc2.bias
+            param_dict[f"transformer_block_{i}_fc2_bias_grad"] = block.feed_forward.fc2.grad_bias
 
-        recurse(nested_dict, parent_key)
-        return flat_params, flat_grads
+        # Separate params and grads for optimizer
+        params = {}
+        grads = {}
+        for k, v in param_dict.items():
+            if "_grad" in k:
+                grads[k.replace("_grad", "")] = v
+            else:
+                params[k] = v
 
+        self.optimizer = AdamOptimizer(params=params, grads=grads, lr=lr)
 
     def forward(self, x: Tensor, temperature: float = 1.0) -> Tensor:
         self.input_indices = x
@@ -533,40 +603,6 @@ class GPT:
         Resets all gradients using the Adam optimizer.
         """
         self.optimizer.zero_grad()
-
-    # def update_parameters(self, learning_rate: float):
-    #     # Update token embedding weights
-    #     self.token_embedding.weights -= learning_rate * self.token_embedding.grad_weights
-
-    #     # Update output projection weights
-    #     self.output.W -= learning_rate * self.output.grad_W
-
-    #     # Update transformer blocks parameters
-    #     for block in self.transformer_blocks:
-    #         # Update attention parameters
-    #         attention = block.attention.attention
-    #         for i in range(attention.heads):
-    #             attention.W_Q[i] -= learning_rate * attention.grad_W_Q[i]
-    #             attention.W_K[i] -= learning_rate * attention.grad_W_K[i]
-    #             attention.W_V[i] -= learning_rate * attention.grad_W_V[i]
-    #             attention.W_O[i] -= learning_rate * attention.grad_W_O[i]
-
-    #         # Update layer normalization parameters
-    #         block.attention.layer_norm.gamma -= learning_rate * block.attention.layer_norm.grad_gamma
-    #         block.attention.layer_norm.beta -= learning_rate * block.attention.layer_norm.grad_beta
-
-    #         block.layer_norm_1.gamma -= learning_rate * block.layer_norm_1.grad_gamma
-    #         block.layer_norm_1.beta -= learning_rate * block.layer_norm_1.grad_beta
-
-    #         block.layer_norm_2.gamma -= learning_rate * block.layer_norm_2.grad_gamma
-    #         block.layer_norm_2.beta -= learning_rate * block.layer_norm_2.grad_beta
-
-    #         # Update feed forward parameters
-    #         block.feed_forward.fc1.weights -= learning_rate * block.feed_forward.fc1.grad_weights
-    #         block.feed_forward.fc1.bias -= learning_rate * block.feed_forward.fc1.grad_bias
-
-    #         block.feed_forward.fc2.weights -= learning_rate * block.feed_forward.fc2.grad_weights
-    #         block.feed_forward.fc2.bias -= learning_rate * block.feed_forward.fc2.grad_bias
 
     def zero_grad(self):
         # Zero gradients in token embedding
@@ -620,7 +656,6 @@ class GPT:
         # TODO: Check other params
         return nan_in_params
     
-    
     def clip_gradients(self, max_norm):
         # Clip token embedding gradients
         torch.nn.utils.clip_grad_norm_([self.token_embedding.grad_weights], max_norm)
@@ -641,7 +676,6 @@ class GPT:
             # Clip feed-forward gradients
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
-
 
     def train_model(self, data: List[Tensor], epochs: int, learning_rate: float) -> List[float]:
         loss_history = []
@@ -692,7 +726,6 @@ class GPT:
         Sets the model to evaluation mode.
         """
         self.train_mode = False   
-
 
     def generate_sequence(self, initial_input, max_length):
         self.eval_mode()
