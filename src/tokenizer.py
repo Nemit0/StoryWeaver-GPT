@@ -6,13 +6,14 @@ from typing import List, Dict, Tuple
 from multiprocessing import Pool
 from tqdm import tqdm
 
-from .utils import get_project_root
+from .utils import *
 
 class BytePairTokenizer:
     def __init__(self, data_path:str=None) -> None:
         """
         BytePairTokenizer object
         """
+        self.cache: Dict[Tuple[str], List[int]] = {}
         if data_path:
             self.load_model(data_path)
             return
@@ -148,6 +149,11 @@ class BytePairTokenizer:
         """
         word = word.copy()
         pairs = self._get_pairs(word)
+
+        word_tuple = tuple(word)
+        if word_tuple in self.cache:
+            return self.cache[word_tuple]
+        
         while True:
             if not pairs:
                 break
@@ -172,6 +178,7 @@ class BytePairTokenizer:
                 else:
                     i += 1
             pairs = self._get_pairs(word)
+        self.cache[word_tuple] = word
         return word
 
     def process_word(self, word):
@@ -187,19 +194,18 @@ class BytePairTokenizer:
         words = re.findall(r'\s*\S+|\s+', text)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        if elapsed_time > 10:
-            print("Finished splitting text into words in", elapsed_time, "seconds")
+        print("Finished splitting text into words in", elapsed_time, "seconds")
 
         start_time = time.time()
         with Pool() as pool:
             tokens = pool.map(self.process_word, words)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        if elapsed_time > 10:
-            print("Finished processing words in", elapsed_time, "seconds")
+        print("Finished processing words in", elapsed_time, "seconds")
         
         return [token for word in tokens for token in word]
     
+    @timer
     def encode(self, data: str) -> List[int]:
         """
         Encode text data into a list of token IDs
