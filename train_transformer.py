@@ -40,9 +40,9 @@ def main():
     if not os.path.exists('./model/checkpoints'):
         os.makedirs('./model/checkpoints')
     tokenizer_path = './model/tokenizer.json'
-    model_path = './model/gpt_model.pth'
+    model_path = './model/checkpoints/gpt_model.pth'
     data_path = './data/combined_data.txt'
-    config_path = './config/config.json'
+    config_path = './logs/config.json'
 
     tokenizer = load_tokenizer(tokenizer_path)
     vocab_size = len(tokenizer.token_map)

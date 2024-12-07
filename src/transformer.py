@@ -453,7 +453,10 @@ class GPT:
                  ff_dim: int, 
                  num_blocks: int, 
                  lr: float = 1e-3):
-        self.lr = lr
+        self.lr: float = lr
+        self.vocab_size: int = vocab_size
+        self.heads: int = heads
+        self.ff_dim: int = ff_dim
         self.embed_size: int = embed_size
         self.max_seq_len: int = max_seq_len
         self.num_blocks: int = num_blocks
@@ -646,44 +649,44 @@ class GPT:
             block.feed_forward.fc2.grad_weights.zero_()
             block.feed_forward.fc2.grad_bias.zero_()
     
-    def check_gradients(self):
-        nan_in_gradients = False
-        # Check token embedding gradients
-        if torch.any(torch.isnan(self.token_embedding.grad_weights)):
-            print("NaN detected in token_embedding.grad_weights")
-            nan_in_gradients = True
-        # TODO: Check other params
-        return nan_in_gradients
+    # def check_gradients(self):
+    #     nan_in_gradients = False
+    #     # Check token embedding gradients
+    #     if torch.any(torch.isnan(self.token_embedding.grad_weights)):
+    #         print("NaN detected in token_embedding.grad_weights")
+    #         nan_in_gradients = True
+    #     # TODO: Check other params
+    #     return nan_in_gradients
 
-    def check_parameters(self):
-        nan_in_params = False
-        # Check token embedding weights
-        if torch.any(torch.isnan(self.token_embedding.weights)):
-            print("NaN detected in token_embedding.weights")
-            nan_in_params = True
-        # TODO: Check other params
-        return nan_in_params
+    # def check_parameters(self):
+    #     nan_in_params = False
+    #     # Check token embedding weights
+    #     if torch.any(torch.isnan(self.token_embedding.weights)):
+    #         print("NaN detected in token_embedding.weights")
+    #         nan_in_params = True
+    #     # TODO: Check other params
+    #     return nan_in_params
     
-    def clip_gradients(self, max_norm):
-        # Clip token embedding gradients
-        torch.nn.utils.clip_grad_norm_([self.token_embedding.grad_weights], max_norm)
-        # Clip output projection gradients
-        torch.nn.utils.clip_grad_norm_([self.output.grad_W], max_norm)
-        # Clip gradients in transformer blocks
-        for block in self.transformer_blocks:
-            attention = block.attention.attention
-            for i in range(attention.heads):
-                torch.nn.utils.clip_grad_norm_([attention.grad_W_Q[i]], max_norm)
-                torch.nn.utils.clip_grad_norm_([attention.grad_W_K[i]], max_norm)
-                torch.nn.utils.clip_grad_norm_([attention.grad_W_V[i]], max_norm)
-                torch.nn.utils.clip_grad_norm_([attention.grad_W_O[i]], max_norm)
-            # Clip layer norm gradients
-            torch.nn.utils.clip_grad_norm_([block.attention.layer_norm.grad_gamma, block.attention.layer_norm.grad_beta], max_norm)
-            torch.nn.utils.clip_grad_norm_([block.layer_norm_1.grad_gamma, block.layer_norm_1.grad_beta], max_norm)
-            torch.nn.utils.clip_grad_norm_([block.layer_norm_2.grad_gamma, block.layer_norm_2.grad_beta], max_norm)
-            # Clip feed-forward gradients
-            torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
-            torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
+    # def clip_gradients(self, max_norm):
+    #     # Clip token embedding gradients
+    #     torch.nn.utils.clip_grad_norm_([self.token_embedding.grad_weights], max_norm)
+    #     # Clip output projection gradients
+    #     torch.nn.utils.clip_grad_norm_([self.output.grad_W], max_norm)
+    #     # Clip gradients in transformer blocks
+    #     for block in self.transformer_blocks:
+    #         attention = block.attention.attention
+    #         for i in range(attention.heads):
+    #             torch.nn.utils.clip_grad_norm_([attention.grad_W_Q[i]], max_norm)
+    #             torch.nn.utils.clip_grad_norm_([attention.grad_W_K[i]], max_norm)
+    #             torch.nn.utils.clip_grad_norm_([attention.grad_W_V[i]], max_norm)
+    #             torch.nn.utils.clip_grad_norm_([attention.grad_W_O[i]], max_norm)
+    #         # Clip layer norm gradients
+    #         torch.nn.utils.clip_grad_norm_([block.attention.layer_norm.grad_gamma, block.attention.layer_norm.grad_beta], max_norm)
+    #         torch.nn.utils.clip_grad_norm_([block.layer_norm_1.grad_gamma, block.layer_norm_1.grad_beta], max_norm)
+    #         torch.nn.utils.clip_grad_norm_([block.layer_norm_2.grad_gamma, block.layer_norm_2.grad_beta], max_norm)
+    #         # Clip feed-forward gradients
+    #         torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
+    #         torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
 
     def train_model(self, data: List[Tensor], epochs: int) -> List[float]:
         loss_history = []
@@ -704,16 +707,16 @@ class GPT:
                 # Backward pass
                 self.backward(probs, labels)
 
-                # Gradient Clipping
-                self.clip_gradients(max_norm=1.0)
+                # # Gradient Clipping
+                # self.clip_gradients(max_norm=1.0)
 
                 # Update parameters using Adam
                 self.update_parameters()
 
-                # Check for NaNs in parameters
-                if self.check_parameters():
-                    print("NaN detected in parameters. Stopping training.")
-                    return loss_history
+                # # Check for NaNs in parameters
+                # if self.check_parameters():
+                #     print("NaN detected in parameters. Stopping training.")
+                #     return loss_history
 
                 # Zero gradients
                 self.zero_grad()
@@ -734,6 +737,19 @@ class GPT:
         Sets the model to evaluation mode.
         """
         self.train_mode = False   
+    
+    def save_model(self, path):
+        """
+        Saves the model to the specified path.
+        """
+        torch.save(self, path)
+    
+    @staticmethod
+    def load_model(path):
+        """
+        Loads the model from the specified path.
+        """
+        return torch.load(path)
 
     def generate_sequence(self, initial_input, max_length):
         self.eval_mode()
