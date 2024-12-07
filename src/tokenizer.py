@@ -2,8 +2,9 @@ import json
 import re
 import os
 import time
+import parmap
 from typing import List, Dict, Tuple
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 
 from .utils import *
@@ -197,12 +198,13 @@ class BytePairTokenizer:
         print("Finished splitting text into words in", elapsed_time, "seconds")
 
         start_time = time.time()
-        with Pool() as pool:
-            tokens = pool.map(self.process_word, words)
+        tokens = parmap.map(self.process_word, words, pm_pbar=True, pm_processes=cpu_count())
+        # with Pool() as pool:
+        #     tokens = pool.map(self.process_word, words)
         end_time = time.time()
         elapsed_time = end_time - start_time
         print("Finished processing words in", elapsed_time, "seconds")
-        
+    
         return [token for word in tokens for token in word]
     
     @timer
