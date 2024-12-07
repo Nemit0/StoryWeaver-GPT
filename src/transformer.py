@@ -695,11 +695,18 @@ class GPT:
         Gracefully exits the training loop.
         """
         import json
+        import os
         print(f"Signal {signum} detected. Exiting gracefully.")
         self.save_model(self.model_path)
         print(f"Model saved to {self.model_path}")
-        with open(self.config_path, "r") as f:
-            config = json.load(f)
+        if os.path.exists(self.config_path):
+            with open(self.config_path, "r") as f:
+                config = json.load(f)
+        else:
+            config = {
+                "epoch": 0,
+                "loss": []
+            }
         config["epoch"]  += self.epoch
         config['loss'].extend(self.loss_history)
         with open(self.config_path, "w") as f:
@@ -707,7 +714,9 @@ class GPT:
         print(f"Training history saved to {self.config_path}")
         sys.exit(0)
 
-    def train_model(self, data: List[Tensor], epochs: int, **kwargs) -> List[float]:
+    def train_model(self, 
+                    data: List[Tensor], 
+                    epochs: int, **kwargs) -> List[float]:
         self.model_path = kwargs.get("model_path")
         self.config_path = kwargs.get("config_path")
         signal.signal(signal.SIGINT, self.graceful_exit)
