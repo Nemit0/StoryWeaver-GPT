@@ -99,10 +99,10 @@ hostname
 source /opt/sw/anaconda3/etc/profile.d/conda.sh
 conda activate
 
-python compute_pi.py
+python test.py
 ```
 
 #### Job Submission
 ```bash
-[USER_ID@sichpc ~]$ sbatch -a [0-9] script.sh
+[USER_ID@sichpc ~]$ sbatch -a 0 -p <partition name> -G1 script.sh
 ```

@@ -34,9 +34,14 @@ else:
 
 def main():
     print("Starting training...")
-    tokenizer_path = './model/tokenizer_shakesphere.json'
-    model_path = './model/gpt_model_shakesphere1.pth'
-    data_path = './.data/input.txt'
+    # Make necessary directories for training
+    # Some models are ignored in the .gitignore file
+    # Hence it's necessary to create these directories
+    if not os.path.exists('./model/checkpoints'):
+        os.makedirs('./model/checkpoints')
+    tokenizer_path = './model/tokenizer.json'
+    model_path = './model/gpt_model.pth'
+    data_path = './data/combined_data.txt'
     config_path = './config/config.json'
 
     tokenizer = load_tokenizer(tokenizer_path)
@@ -54,38 +59,45 @@ def main():
         }
 
     if os.path.exists(model_path):
-        GptObj = GPT.load_model('./model/gpt_model_shakesphere1.pth')
+        GptObj = GPT.load_model(model_path)
         logging.log(logging.INFO, "Loaded model from file")
         embedding_dim = GptObj.embed_size
         max_seq_len = GptObj.max_seq_len
         heads = GptObj.heads
         ff_expand_dim = GptObj.ff_dim
+        lr = GptObj.lr
     else:
-        embedding_dim = 512
-        max_seq_len = 512
-        heads = 8
+        embedding_dim = 16
+        max_seq_len = 16
+        heads = 1
         ff_expand_dim = 2
         logging.log(logging.INFO, "Creating new model")
-        GptObj = GPT(vocab_size, embedding_dim, max_seq_len, heads, ff_expand_dim, num_blocks=3)
+        GptObj = GPT(vocab_size, 
+                     embedding_dim, 
+                     max_seq_len, 
+                     heads, 
+                     ff_expand_dim, 
+                     num_blocks=1,
+                     lr = 0.001)
     
     GptObj.train_mode = True
 
     # Load data
-    with open(os.path.join(os.getcwd(), "./.data/input.txt"), "r", encoding="utf-8") as f:
-        text = f.read()
+    with open(os.path.join(data_path), "r", encoding="utf-8") as f:
+        text = f.read()[:100]
 
     data = tokenizer.encode(text)
     dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
-    print(len(dataset))
 
-    dataset = dataset
+    # For demonstration, we can use a smaller dataset
+    dataset = dataset[:10]
     print(len(dataset))
+    print(f"Dataset size: {len(dataset)}")
 
     # Train the model
     epochs = 500
-    learning_rate = 0.001
-    logging.log(logging.INFO, "Training model for %d epochs with learning rate %f", epochs + train_config['epochs'], learning_rate)
-    loss_history = GptObj.train_model(dataset, epochs, learning_rate)
+    logging.log(logging.INFO, "Training model for %d epochs with learning rate %f", epochs + train_config['epochs'])
+    loss_history = GptObj.train_model(dataset, epochs)
 
     print(f"Final loss: {loss_history[-1]}")
     logging.info("Final loss: %f", loss_history[-1])
@@ -94,17 +106,10 @@ def main():
     train_config['loss'].extend(loss_history)
 
     # Save the model
-    GptObj.save_model('./model/gpt_model_shakesphere1.pth')
+    GptObj.save_model(model_path)
     logging.info("Model saved to file")
-    with open('./logs/train_config.json', 'w') as f:
+    with open(config_path, 'w') as f:
         json.dump(train_config, f)
 
 if __name__ == "__main__":
-    # try:
-    #     main()
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
-    #     logging.error("An error occurred: %s", e)
-    #     sys.exit(1)
-    # sys.exit(0)
     main()

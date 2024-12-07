@@ -445,7 +445,15 @@ class TransformerEncoderBlock:
         return grad_x
 
 class GPT:
-    def __init__(self, vocab_size: int, embed_size: int, max_seq_len: int, heads: int, ff_dim: int, num_blocks: int, lr: float = 1e-3):
+    def __init__(self, 
+                 vocab_size: int, 
+                 embed_size: int, 
+                 max_seq_len: int, 
+                 heads: int, 
+                 ff_dim: int, 
+                 num_blocks: int, 
+                 lr: float = 1e-3):
+        self.lr = lr
         self.embed_size: int = embed_size
         self.max_seq_len: int = max_seq_len
         self.num_blocks: int = num_blocks
@@ -677,7 +685,7 @@ class GPT:
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
             torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
 
-    def train_model(self, data: List[Tensor], epochs: int, learning_rate: float) -> List[float]:
+    def train_model(self, data: List[Tensor], epochs: int) -> List[float]:
         loss_history = []
         for epoch in tqdm(range(epochs)):
             epoch_loss = 0.0
