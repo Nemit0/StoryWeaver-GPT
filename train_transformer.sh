@@ -7,7 +7,13 @@
 
 hostname
 
+# Using default given conda environment
+# source /opt/sw/anaconda3/etc/profile.d/conda.sh
+# conda activate torch220_cu118
+
+# Using custom conda environment
+# Note if the env is not defined, it may not work.
 source /opt/sw/anaconda3/etc/profile.d/conda.sh
-conda activate torch220_cu118
+conda activate /home/$LOGNAME/.conda/envs/torchenv
 
 python train_transformer.py

@@ -1,6 +1,6 @@
 import logging
 import json
-import sys
+import os
 from datetime import datetime
 
 from src.transformer import *
@@ -71,14 +71,16 @@ def main():
         max_seq_len = 2048
         heads = 8
         ff_expand_dim = 2
+        lr = 0.001
+        blocks = 3
         logging.log(logging.INFO, "Creating new model")
         GptObj = GPT(vocab_size, 
                      embedding_dim, 
                      max_seq_len, 
                      heads, 
                      ff_expand_dim, 
-                     num_blocks=1,
-                     lr = 0.001)
+                     num_blocks=blocks,
+                     lr = lr)
     
     GptObj.train_mode = True
 
@@ -97,7 +99,10 @@ def main():
     # Train the model
     epochs = 500
     logging.log(logging.INFO, f"Current epoch: {train_config['epochs']}, Training for {epochs} more epochs with learning rate {lr}")
-    loss_history = GptObj.train_model(dataset, epochs)
+    loss_history = GptObj.train_model(dataset, 
+                                      epochs, 
+                                      model_path=model_path, 
+                                      config_path=config_path,)
 
     print(f"Final loss: {loss_history[-1]}")
     logging.info("Final loss: %f", loss_history[-1])
