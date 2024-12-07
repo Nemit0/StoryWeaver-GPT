@@ -3,7 +3,7 @@ import re
 import os
 import time
 from typing import List, Dict, Tuple
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 
 from .utils import get_project_root
@@ -27,6 +27,11 @@ class BytePairTokenizer:
         self.token_map: Dict[str, int] = self.special_tokens.copy()
         self.inv_map: Dict[int, str] = self.inv_special_tokens.copy()
         self.bpe_codes: Dict[Tuple[str, str], int] = {}
+
+        # Encodign cache
+        self._word_cache: Dict[str, List[str]] = {}
+        # Pool for parallel processing(Reusing pool)
+        self._pool = Pool(cpu_count())
     
     def train(self, corpus: List[str], num_merges: int, verbose:bool = False) -> None:
         """
@@ -174,39 +179,51 @@ class BytePairTokenizer:
             pairs = self._get_pairs(word)
         return word
 
-    def process_word(self, word):
+    def process_word(self, word: str) -> List[str]:
+        # Use cached result if available
+        if word in self._word_cache:
+            return self._word_cache[word]
+
         chars = list(word) + ['</w>']
-        return self._apply_bpe(chars)
+        processed = self._apply_bpe(chars)
+        self._word_cache[word] = processed
+        return processed
     
     def split_text(self, text: str) -> List[str]:
-        """
-        Split text into BPE tokens with leading whitespace preserved
-        """
-        start_time = time.time()
-        tokens = []
-        words = re.findall(r'\s*\S+|\s+', text)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        if elapsed_time > 10:
-            print("Finished splitting text into words in", elapsed_time, "seconds")
+        # The regex splitting remains the same as requested
+        return re.findall(r'\s*\S+|\s+', text)
+    
+    # def split_text(self, text: str) -> List[str]:
+        # """
+        # Split text into BPE tokens with leading whitespace preserved
+        # """
+        # start_time = time.time()
+        # tokens = []
+        # words = re.findall(r'\s*\S+|\s+', text)
+        # end_time = time.time()
+        # elapsed_time = end_time - start_time
+        # if elapsed_time > 10:
+        #     print("Finished splitting text into words in", elapsed_time, "seconds")
 
-        start_time = time.time()
-        with Pool() as pool:
-            tokens = pool.map(self.process_word, words)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        if elapsed_time > 10:
-            print("Finished processing words in", elapsed_time, "seconds")
+        # start_time = time.time()
+        # with Pool() as pool:
+        #     tokens = pool.map(self.process_word, words)
+        # end_time = time.time()
+        # elapsed_time = end_time - start_time
+        # if elapsed_time > 10:
+        #     print("Finished processing words in", elapsed_time, "seconds")
         
-        return [token for word in tokens for token in word]
+        # return [token for word in tokens for token in word]
     
     def encode(self, data: str) -> List[int]:
         """
         Encode text data into a list of token IDs
         """
-        str_list = self.split_text(data)
-        token_list = [self.token_map[tok] for tok in str_list]
-        return token_list
+        words = self.split_text(data)
+        results = self._pool.map(_encode_wrapper, [(self, w) for w in words])
+        all_tokens = [tok for sublist in results for tok in sublist]
+        token_ids = [self.token_map[tok] for tok in all_tokens]
+        return token_ids
     
     def decode(self, data: List[int]) -> str:
         """
@@ -263,6 +280,11 @@ def load_tokenizer(path:str = None) -> BytePairTokenizer:
     tokenizer = BytePairTokenizer(model_path)
     # tokenizer.load_model(model_path)
     return tokenizer
+
+def _encode_wrapper(args):
+    # Helper function for multiprocessing map
+    tokenizer, word = args
+    return tokenizer.process_word(word)
 
 if __name__ == "__main__":
     # Test the BytePairTokenizer
