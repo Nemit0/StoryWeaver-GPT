@@ -1,4 +1,6 @@
 import torch
+import sys
+import signal
 from torch import tensor, Tensor
 from typing import List, Dict, Tuple
 from tqdm import tqdm
@@ -688,9 +690,32 @@ class GPT:
     #         torch.nn.utils.clip_grad_norm_([block.feed_forward.fc1.grad_weights, block.feed_forward.fc1.grad_bias], max_norm)
     #         torch.nn.utils.clip_grad_norm_([block.feed_forward.fc2.grad_weights, block.feed_forward.fc2.grad_bias], max_norm)
 
-    def train_model(self, data: List[Tensor], epochs: int) -> List[float]:
-        loss_history = []
+    def graceful_exit(self, signum, frame):
+        """
+        Gracefully exits the training loop.
+        """
+        import json
+        print(f"Signal {signum} detected. Exiting gracefully.")
+        self.save_model(self.model_path)
+        print(f"Model saved to {self.model_path}")
+        with open(self.config_path, "r") as f:
+            config = json.load(f)
+        config["epoch"]  += self.epoch
+        config['loss'].extend(self.loss_history)
+        with open(self.config_path, "w") as f:
+            json.dump(config, f)
+        print(f"Training history saved to {self.config_path}")
+        sys.exit(0)
+
+    def train_model(self, data: List[Tensor], epochs: int, **kwargs) -> List[float]:
+        self.model_path = kwargs.get("model_path")
+        self.config_path = kwargs.get("config_path")
+        signal.signal(signal.SIGINT, self.graceful_exit)
+        signal.signal(signal.SIGTERM, self.graceful_exit)
+        self.loss_history = []
+        self.epoch = 0
         for epoch in tqdm(range(epochs)):
+            self.epoch = epoch
             epoch_loss = 0.0
             for input_indices in data:
                 labels = input_indices[1:]  # Shifted input indices (next tokens)
@@ -722,14 +747,14 @@ class GPT:
                 self.zero_grad()
 
             avg_loss = epoch_loss / len(data)
-            loss_history.append(avg_loss)
+            self.loss_history.append(avg_loss)
             print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.4f}")
 
             # Early stopping if loss is NaN
             if torch.isnan(torch.tensor(avg_loss)):
                 print("Loss became NaN. Stopping training.")
                 break
-
+        loss_history = self.loss_history
         return loss_history
     
     def eval_mode(self):
