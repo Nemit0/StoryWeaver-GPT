@@ -39,7 +39,7 @@ def main():
     # Hence it's necessary to create these directories
     if not os.path.exists('./model/checkpoints'):
         os.makedirs('./model/checkpoints')
-    tokenizer_path = './model/tokenizer.json'
+    tokenizer_path = './model/tokenizerㅋ.json'
     model_path = './model/checkpoints/gpt_model.pth'
     data_path = './data/combined_data.txt'
     config_path = './logs/config.json'
@@ -87,6 +87,9 @@ def main():
     # Load data
     with open(os.path.join(data_path), "r", encoding="utf-8") as f:
         text = f.read()
+
+    ratio = 0.3
+    text = text[:int(len(text)*ratio)]
 
     data = tokenizer.encode(text)
     dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
