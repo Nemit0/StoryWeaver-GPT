@@ -87,6 +87,9 @@ def main():
     # Load data
     with open(os.path.join(data_path), "r", encoding="utf-8") as f:
         text = f.read()
+    
+    ratio = 0.3
+    text = text[:int(len(text)*ratio)]
 
     ratio = 0.3
     text = text[:int(len(text)*ratio)]

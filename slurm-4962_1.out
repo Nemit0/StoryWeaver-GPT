@@ -9,4 +9,4 @@ Finished processing words in 752.9263603687286 seconds
 Function encode executed in 0:13:46.080191
 153895
 Dataset size: 153895
-  0%|          | 0/500 [00:00<?, ?it/s]
+  0%|          | 0/500 [00:00<?, ?it/s]slurmstepd: error: *** JOB 4962 ON gpu01 CANCELLED AT 2024-12-08T14:37:45 ***
