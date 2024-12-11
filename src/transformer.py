@@ -49,8 +49,8 @@ class ReLUActivation:
 class GeLUActivation:
     def forward(self, x: Tensor) -> Tensor:
         self.input = x
-        c = torch.tensor(0.7978845608, dtype=x.dtype, device=x.device) # sqrt(2/pi) approximated
-        a = torch.tensor(0.044715, dtype=x.dtype, device=x.device) # 2/(pi*sqrt(2)) approximated
+        c = torch.tensor(0.7978845608, dtype=x.dtype) # sqrt(2/pi) approximated
+        a = torch.tensor(0.044715, dtype=x.dtype)
         self.c = c
         self.a = a
         self.s = c * (x + a * x ** 3)
@@ -69,7 +69,6 @@ class GeLUActivation:
         dy_dx = 0.5 * (1.0 + tanh_s + x * sech2_s * ds_dx)
         grad_input = grad_output * dy_dx
         return grad_input
-
 
 class Embedding:
     def __init__(self, input_dim: int, output_dim: int) -> None:
@@ -102,7 +101,7 @@ class PositionalEncoding:
     def forward(self, x: Tensor) -> Tensor:
         seq_length, embed_size = x.shape
         pos_encoding = self.pos_encoding[:seq_length, :]  # Slice for the current sequence length
-        return x + pos_encoding.to(x.device)
+        return x + pos_encoding
 
 class MultiHeadAttention:
     def __init__(self, embed_size: int, heads: int):
@@ -652,7 +651,7 @@ class GPT:
             block.feed_forward.fc2.grad_weights.zero_()
             block.feed_forward.fc2.grad_bias.zero_()
 
-    def graceful_exit(self, signum, frame):
+    def graceful_exit(self, signum):
         """
         Gracefully exits the training loop.
         """

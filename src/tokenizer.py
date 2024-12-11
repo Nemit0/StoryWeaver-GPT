@@ -242,9 +242,10 @@ class BytePairTokenizer:
             json.dump({
                 'token_map': self.token_map,
                 'bpe_codes': {json.dumps(list(k)): v for k, v in self.bpe_codes.items()}
-            }, f,
-             indent=4,
-              ensure_ascii=False)
+            }, 
+            f,
+            indent=4,
+            ensure_ascii=False)
     
     def load_model(self, model_path:str) -> None:
         """

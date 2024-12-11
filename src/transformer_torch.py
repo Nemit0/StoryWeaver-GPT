@@ -109,11 +109,10 @@ def train_model(model: nn.Module,
         epoch_loss = 0.0
         for batch in data:
             batch = batch.to(device)
-            # Input: all but last token
-            inputs = batch[:-1]
-            # Targets: all but first token
-            targets = batch[1:]
+            inputs = batch[:-1] # All but last
+            targets = batch[1:] # All but first
             # Convert to batch dimension first
+            # Bach isn't applied here yet
             inputs = inputs.unsqueeze(0)  # (1, seq_len)
             targets = targets.unsqueeze(0) # (1, seq_len)
 

@@ -57,11 +57,11 @@ def main():
     # If model exists, load it; otherwise create a new one
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location='cpu')
-        embedding_dim = checkpoint.get('embedding_dim', 768)
-        max_seq_len = checkpoint.get('max_seq_len', 2048)
+        embedding_dim = checkpoint.get('embedding_dim', 1024)
+        max_seq_len = checkpoint.get('max_seq_len', 1024)
         heads = checkpoint.get('heads', 8)
         ff_expand_dim = checkpoint.get('ff_expand_dim', 2)
-        blocks = checkpoint.get('blocks', 3)
+        blocks = checkpoint.get('blocks', 2)
         lr = checkpoint.get('lr', 0.001)
 
         model = GPT(vocab_size=vocab_size, 
@@ -74,12 +74,12 @@ def main():
         model.load_state_dict(checkpoint['model_state_dict'])
         logging.info("Loaded model from file")
     else:
-        embedding_dim = 768
+        embedding_dim = 1024
         max_seq_len = 1024
         heads = 8
         ff_expand_dim = 2
         lr = 0.001
-        blocks = 1
+        blocks = 2
         logging.info("Creating new model")
         model = GPT(vocab_size=vocab_size, 
                     embed_size=embedding_dim, 
@@ -139,7 +139,7 @@ def main():
     logging.info("Initial input tokens: %s", initial_input.tolist())
     print(f"Initial input tokens: {initial_input.tolist()}")
 
-    generated_sequence = generate_sequence(model, initial_input, max_length=50, device=device)
+    generated_sequence = generate_sequence(model, initial_input, max_length=768, device=device)
     logging.info("Generated token sequence: %s", generated_sequence.tolist())
     print(f"Generated token sequence: {generated_sequence.tolist()}")
 
