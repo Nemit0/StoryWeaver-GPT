@@ -112,7 +112,6 @@ def train_model(model: nn.Module,
             inputs = batch[:-1] # All but last
             targets = batch[1:] # All but first
             # Convert to batch dimension first
-            # Bach isn't applied here yet
             inputs = inputs.unsqueeze(0)  # (1, seq_len)
             targets = targets.unsqueeze(0) # (1, seq_len)
 

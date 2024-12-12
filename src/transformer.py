@@ -17,6 +17,8 @@ else:
     torch.set_default_device(device)
     print("Using CPU")
 
+torch.set_default_dtype(torch.float64)
+
 ### NEURAL NETWORK OBJECTS ###
 
 class LinearLayer:
@@ -49,8 +51,8 @@ class ReLUActivation:
 class GeLUActivation:
     def forward(self, x: Tensor) -> Tensor:
         self.input = x
-        c = torch.tensor(0.7978845608, dtype=x.dtype) # sqrt(2/pi) approximated
-        a = torch.tensor(0.044715, dtype=x.dtype)
+        c = torch.tensor(0.7978845608) # sqrt(2/pi) approximated
+        a = torch.tensor(0.044715)
         self.c = c
         self.a = a
         self.s = c * (x + a * x ** 3)
@@ -158,6 +160,7 @@ class MultiHeadAttention:
         grad_x = torch.zeros_like(self.x)
         for i in range(self.heads):
             # Since outputs are summed, grad_output is the same for each head
+            # Gradient w.r.t. head output
             grad_head_output = grad_output  # Shape: (seq_len, embed_size)
 
             # Gradient w.r.t. W_O[i]
@@ -589,7 +592,7 @@ class GPT:
 
     def backward(self, probs: Tensor, labels: Tensor) -> None:
         # Compute gradient of loss w.r.t. logits
-        batch_size, vocab_size = probs.shape
+        batch_size,     vocab_size = probs.shape
         labels_one_hot = torch.zeros_like(probs)
         labels_one_hot[range(batch_size), labels] = 1
 

@@ -64,7 +64,7 @@
   \frametitle{GeLU Activation}
   \begin{itemize}
     \item GeLU is given as \[
-    GeLU(x) = \frac{1}{2}(1 + \text{erf}\left(\frac{x}{\sqrt{2}}\right))
+    GeLU(x) = \frac{1}{2}x(1 + \text{erf}\left(\frac{x}{\sqrt{2}}\right))
     \]
     \item Where the \text{erf} is the error function, given as \[
     \text{erf}(x) = \frac{2}{\sqrt{\pi}} \int_{0}^{x} e^{-t^2} \, dt
@@ -84,10 +84,10 @@
   \frametitle{GEeU Activation}
   \begin{itemize}
     \item With approximation implemented, the equation becomes \[
-    GeLU(x) = \frac{1}{2}(1 + tanh(\sqrt{\frac{2}{\pi}}(x + 0.044715x^3)))
+    GeLU(x) = \frac{1}{2}x(1 + tanh(\sqrt{\frac{2}{\pi}}(x + 0.044715x^3)))
     \]
     \item Replacing $\sqrt{\frac{2}{\pi}}$ with 0.7978845608, we get \[
-    GeLU(x) = \frac{1}{2}(1 + tanh(0.7978845608(x + 0.044715x^3)))
+    GeLU(x) = \frac{1}{2}x(1 + tanh(0.7978845608(x + 0.044715x^3)))
     \]
   \end{itemize}
 
@@ -123,5 +123,57 @@
 \frame
 {
   \frametitle{Code Explainations}
+}
+
+\frame 
+{
+  \frametitle{Model Recreation with torch.nn.Module}
+  \begin{itemize}
+    \item Recreated the model with torch.nn.Module under assumption that our code lacks optimization.
+    \item With same configuration, original model took 7 hours for 300 epoch, whereas torch.nn.Mudule took 50 minutes for 500 epoch.
+    \item Before testing our actual model, we will test the torch.nn.Module model.
+  \end{itemize}
+}
+
+\frame 
+{
+  \frametitle{Model Training}
+  \begin{itemize}
+    \item Trained on 1000 epoch, with learning rate 0.0001.
+    \item takes approximately 2 hours to train on rtx 3080.
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{loss.png}
+  \end{figure}
+}
+
+% \frame 
+% {
+%   \frametitle{Sample Generation}
+%   \begin{figure}
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{output_lengths.png}
+%   \end{figure}
+% }
+
+% \frame
+% {
+%   \frametitle{Problems}
+%   \begin{itemize}
+%     \item While we can see decline on loss, it is difficult to have model make coherent sentences.
+%     \item The text repeating pattern is caused by Attention mechanism limitation, lack of diversity in training data, and sampling method.
+%     \item We should try to implement a probablistic sampling method with temperature.
+%   \end{itemize}
+% } 
+
+\frame
+{
+  \frametitle{Remaining Tasks}
+  \begin{itemize}
+    \item 1. Finish training on the original model.
+    \item 2. Implement a probablistic sampling method with temperature.
+    \item 3. (If possible) Implement a repetition penalty.
+  \end{itemize}
 }
 \end{document}
