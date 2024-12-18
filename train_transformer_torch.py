@@ -6,7 +6,6 @@ from datetime import datetime
 
 from src.transformer_torch import *
 from src.tokenizer import *
-from src.nn_objects import *
 from src.utils import *
 
 def main():
@@ -23,14 +22,6 @@ def main():
         level=logging.INFO
     )
     print(f"Logging to file {log_filename}")
-
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    if device == 'cuda':
-        print("CUDA is available")
-        logging.info("CUDA is available, using device %s", torch.cuda.get_device_name())
-    else:
-        print("CUDA is not available")
-        logging.info("CUDA is not available")
 
     # File paths
     tokenizer_path = './model/tokenizer_shakesphere.json'
