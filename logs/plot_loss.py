@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 import json
 
 def main():
-    config_path = './config_shakesphere.json'
+    config_path = './config.json'
     with open(config_path) as f:
         config = json.load(f)
     
-    x = range(config['epochs'] - 500)
-    y = config['loss'][500:]
+    
+    
+    x = range(config['epochs'])
+    y = config['loss']
     # print(json.dumps(config, indent=4))
 
     plt.plot(x, y)

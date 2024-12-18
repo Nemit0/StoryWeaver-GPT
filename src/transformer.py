@@ -1,25 +1,12 @@
 import torch
 import sys
 import signal
-import torch.nn.functional as F
+import json
 from torch import tensor, Tensor
 from typing import List, Dict, Tuple
 from tqdm import tqdm
 
-### CUDA SETUP ###
-
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-    torch.set_default_device(device)
-    print(f"Using {torch.cuda.get_device_name()}")
-else:
-    device = torch.device('cpu')
-    torch.set_default_device(device)
-    print("Using CPU")
-
-torch.set_default_dtype(torch.float64)
-
-### NEURAL NETWORK OBJECTS ###
+from .torch_config import *
 
 class LinearLayer:
     def __init__(self, input_size: int, output_size: int):
@@ -139,7 +126,7 @@ class MultiHeadAttention:
             self.V_heads.append(V)
 
         # Create mask for causal attention
-        mask = torch.triu(torch.full((seq_length, seq_length), float('-inf')), diagonal=1)
+        mask = torch.triu(torch.full((seq_length, seq_length), float('-inf')), diagonal=1).to(device)
         self.head_outputs = []
         self.attention_weights = []
         self.scores = []
@@ -578,6 +565,106 @@ class GPT:
                 params[k] = v
 
         self.optimizer = AdamOptimizer(params=params, grads=grads, lr=lr)
+    
+    def save_weights(self, path: str) -> None:
+        """
+        Saves the model weights to json file
+        """
+        weights = {
+            "embedding_weight": self.token_embedding.weights.tolist(),
+            "output_weight": self.output.W.tolist(),
+            "transformer_blocks": [
+                {
+                    "attention": {
+                        "W_Q": [block.attention.attention.W_Q[i].tolist() for i in range(block.attention.attention.heads)],
+                        "W_K": [block.attention.attention.W_K[i].tolist() for i in range(block.attention.attention.heads)],
+                        "W_V": [block.attention.attention.W_V[i].tolist() for i in range(block.attention.attention.heads)],
+                        "W_O": [block.attention.attention.W_O[i].tolist() for i in range(block.attention.attention.heads)],
+                    },
+                    "layernorm_1": {
+                        "gamma": block.layer_norm_1.gamma.tolist(),
+                        "beta": block.layer_norm_1.beta.tolist(),
+                    },
+                    "FeedForward": {
+                        "fc1_weights": block.feed_forward.fc1.weights.tolist(),
+                        "fc1_bias": block.feed_forward.fc1.bias.tolist(),
+                        "fc2_weights": block.feed_forward.fc2.weights.tolist(),
+                        "fc2_bias": block.feed_forward.fc2.bias.tolist(),
+                    },
+                    "layernorm_2": {
+                        "gamma": block.layer_norm_2.gamma.tolist(),
+                        "beta": block.layer_norm_2.beta.tolist(),
+                    }
+                } for block in self.transformer_blocks
+            ]
+        }
+        with open(path, "w") as f:
+            json.dump(weights, f)
+        
+    def load_weights(self, path: str) -> None:
+        """
+        Loads the model weights from json file
+        """
+        with open(path, "r") as f:
+            weights = json.load(f)
+        self.token_embedding.weights = torch.tensor(weights["embedding_weight"])
+        self.output.W = torch.tensor(weights["output_weight"])
+        for i, block in enumerate(self.transformer_blocks):
+            block.attention.attention.W_Q = torch.tensor(weights["transformer_blocks"][i]["attention"]["W_Q"])
+            block.attention.attention.W_K = torch.tensor(weights["transformer_blocks"][i]["attention"]["W_K"])
+            block.attention.attention.W_V = torch.tensor(weights["transformer_blocks"][i]["attention"]["W_V"])
+            block.attention.attention.W_O = torch.tensor(weights["transformer_blocks"][i]["attention"]["W_O"])
+            block.layer_norm_1.gamma = torch.tensor(weights["transformer_blocks"][i]["layernorm_1"]["gamma"])
+            block.layer_norm_1.beta = torch.tensor(weights["transformer_blocks"][i]["layernorm_1"]["beta"])
+            block.feed_forward.fc1.weights = torch.tensor(weights["transformer_blocks"][i]["FeedForward"]["fc1_weights"])
+            block.feed_forward.fc1.bias = torch.tensor(weights["transformer_blocks"][i]["FeedForward"]["fc1_bias"])
+            block.feed_forward.fc2.weights = torch.tensor(weights["transformer_blocks"][i]["FeedForward"]["fc2_weights"])
+            block.feed_forward.fc2.bias = torch.tensor(weights["transformer_blocks"][i]["FeedForward"]["fc2_bias"])
+            block.layer_norm_2.gamma = torch.tensor(weights["transformer_blocks"][i]["layernorm_2"]["gamma"])
+            block.layer_norm_2.beta = torch.tensor(weights["transformer_blocks"][i]["layernorm_2"]["beta"])
+    
+    def save_model(self, path: str) -> None:
+        """
+        Saves the weight and configuration of the model
+        Parameters:
+            path (str): Path to save the model. It should not be the full file
+                        path, but should end at prefix of the file names.
+        """
+        current_config = {
+            "vocab_size": self.vocab_size,
+            "embed_size": self.embed_size,
+            "max_seq_len": self.max_seq_len,
+            "heads": self.heads,
+            "ff_dim": self.ff_dim,
+            "num_blocks": self.num_blocks,
+            "lr": self.lr
+        }
+        with open(f"{path}_config.json", "w") as f:
+            json.dump(current_config, f)
+        self.save_weights(f"{path}_weights.json")
+    
+    @staticmethod
+    def load_model(path: str) -> None:
+        """
+        Loads the weight and configuration of the model
+        Parameters:
+            path (str): Path to load the model. It should not be the full file
+                        path, but should end at prefix of the file names.
+        """
+        with open(f"{path}_config.json", "r") as f:
+            config = json.load(f)
+
+        model = GPT(
+            vocab_size=config["vocab_size"],
+            embed_size=config["embed_size"],
+            max_seq_len=config["max_seq_len"],
+            heads=config["heads"],
+            ff_dim=config["ff_dim"],
+            num_blocks=config["num_blocks"],
+            lr=config["lr"]
+        )
+        model.load_weights(f"{path}_weights.json")
+        return model
 
     def forward(self, x: Tensor, temperature: float = 1.0) -> Tensor:
         self.input_indices = x
@@ -738,33 +825,52 @@ class GPT:
         """
         self.train_mode = False   
     
-    def save_model(self, path):
+    def train_mode(self):
         """
-        Saves the model to the specified path.
+        Sets the model to training mode.
         """
-        torch.save(self, path)
-    
-    @staticmethod
-    def load_model(path):
-        """
-        Loads the model from the specified path.
-        """
-        return torch.load(path)
+        self.train_mode = True
 
-    def generate_sequence(self, initial_input, max_length):
+    def generate_sequence(self, 
+                          initial_input, 
+                          max_length,
+                          temperature:float = 1.0,
+                          frequency_penalty:float = 0,
+                          stop_token:list[int] = None,
+                          greedy:bool = False) -> Tensor:
         self.eval_mode()
         input_indices = initial_input.clone()
+        stop_token_len = len(stop_token) if stop_token is not None else 0
+        token_frequencies = torch.zeros(self.vocab_size, dtype=torch.float64).to(device)
 
         for _ in range(max_length - len(initial_input)):
             # Forward pass
             probs = self.forward(input_indices)
             # Get the last token's probability distribution
-            next_token_probs = probs[-1]
-            # Sample the next token (you can also use argmax for deterministic results)
-            next_token = torch.argmax(next_token_probs)
+            next_token_probs = probs[-1] / temperature
+            next_token_probs.to(device)
+
+            # Apply frequency penalty
+            if frequency_penalty > 0:
+                next_token_probs /= (1 + frequency_penalty * token_frequencies)
+            
+            next_token_probs = torch.softmax(next_token_probs, dim=-1)
+
+            # Sample the next token 
+            if greedy:
+                next_token = torch.argmax(next_token_probs)
+            else:
+                next_token = torch.multinomial(next_token_probs, 1).squeeze()
+            # Update token frequencies
+            token_frequencies[next_token] += 1
+
             # Append the next token to the input sequence
             input_indices = torch.cat((input_indices, next_token.unsqueeze(0)), dim=0)
-            # If input_indices length exceeds max_seq_len, truncate it
+            # If input_indices length exceeds max_seq_len, truncate and continue
             if len(input_indices) > self.max_seq_len:
                 input_indices = input_indices[-self.max_seq_len:]
+            # If stop token is generated, break
+            if stop_token is not None and input_indices[-stop_token_len:] == stop_token:
+                break
+            
         return input_indices

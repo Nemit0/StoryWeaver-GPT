@@ -40,9 +40,9 @@ def main():
     if not os.path.exists('./model/checkpoints'):
         os.makedirs('./model/checkpoints')
     tokenizer_path = './model/tokenizer_shakesphere.json'
-    model_path = './model/checkpoints/gpt_model.pth'
+    model_path = './model/checkpoints/gpt_model'
     data_path = './data/input.txt'
-    config_path = './logs/config.json'
+    config_path = './logs/config_1.json'
 
     tokenizer = load_tokenizer(tokenizer_path)
     vocab_size = len(tokenizer.token_map)
@@ -71,7 +71,7 @@ def main():
         max_seq_len = 512
         heads = 4
         ff_expand_dim = 2
-        lr = 0.0001
+        lr = 0.001
         blocks = 2
         logging.log(logging.INFO, "Creating new model")
         GptObj = GPT(vocab_size, 
@@ -89,7 +89,7 @@ def main():
         text = f.read()
     
     data = tokenizer.encode(text)
-    dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, max_seq_len)]
+    dataset = [torch.tensor(data[i:i+max_seq_len+1]) for i in range(0, len(data)-max_seq_len, int(max_seq_len))]
 
     # For demonstration, we can use a smaller dataset
     dataset = dataset
@@ -97,7 +97,7 @@ def main():
     print(f"Dataset size: {len(dataset)}")
 
     # Train the model
-    epochs = 300
+    epochs = 600
     logging.log(logging.INFO, f"Current epoch: {train_config['epochs']}, Training for {epochs} more epochs with learning rate {lr}")
     loss_history = GptObj.train_model(dataset, 
                                       epochs, 

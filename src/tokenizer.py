@@ -7,8 +7,6 @@ from typing import List, Dict, Tuple
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 
-from .utils import *
-
 class BytePairTokenizer:
     def __init__(self, data_path:str=None) -> None:
         """
@@ -207,7 +205,6 @@ class BytePairTokenizer:
     
         return [token for word in tokens for token in word]
     
-    @timer
     def encode(self, data: str) -> List[int]:
         """
         Encode text data into a list of token IDs
