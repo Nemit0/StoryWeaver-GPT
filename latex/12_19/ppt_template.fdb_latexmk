@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1734525106.72968 "/home/nemit/Projects/mlgroup1/latex/12_19/ppt_template.tex" "ppt_template.pdf" "ppt_template" 1734525108.42317 0
+["pdflatex"] 1734580752.564 "/home/nemit/Projects/mlgroup1/latex/12_19/ppt_template.tex" "ppt_template.pdf" "ppt_template" 1734580754.31173 0
   "/etc/texmf/web2c/texmf.cnf" 1732164593.61206 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/nemit/Projects/mlgroup1/latex/12_19/ppt_template.tex" 1734525104.51775 5081 499e13e0ae76396b700bbb7cf62ca53c ""
+  "/home/nemit/Projects/mlgroup1/latex/12_19/ppt_template.tex" 1734580752.26912 4902 9b42c0eeb4a9d414f147672cabebdb7f ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -206,11 +206,11 @@
   "generation.png" 1734523050.42781 446651 990538f48081a85572ba56aa8fcce051 ""
   "kyu_univ_logo.png" 1734520307.69552 235448 36ed1ac67ddafd060ee596d11a9f8413 ""
   "loss.png" 1734400294.86818 22163 75cbc92616319fdc2be7368f1e733219 ""
-  "ppt_template.aux" 1734525108.34484 3499 9f5d7c45b3a1727d590fd569cdcffee4 "pdflatex"
-  "ppt_template.nav" 1734525108.34584 2151 6c66c2bf0c35f40762eb9fa297739621 "pdflatex"
-  "ppt_template.out" 1734525108.34584 784 57b4c6eaa4a86a89811e7bfd1b3539d6 "pdflatex"
-  "ppt_template.tex" 1734525104.51775 5081 499e13e0ae76396b700bbb7cf62ca53c ""
-  "ppt_template.toc" 1734525108.34584 219 850c465126465c5423444d22310df6cf "pdflatex"
+  "ppt_template.aux" 1734580754.22915 3499 9f5d7c45b3a1727d590fd569cdcffee4 "pdflatex"
+  "ppt_template.nav" 1734580754.22915 2151 6c66c2bf0c35f40762eb9fa297739621 "pdflatex"
+  "ppt_template.out" 1734580754.22915 784 57b4c6eaa4a86a89811e7bfd1b3539d6 "pdflatex"
+  "ppt_template.tex" 1734580752.26912 4902 9b42c0eeb4a9d414f147672cabebdb7f ""
+  "ppt_template.toc" 1734580754.22915 219 850c465126465c5423444d22310df6cf "pdflatex"
   "sample_generation.png" 1734522358.56293 222251 84ae7bec9d5a89ff33c43eb3772a0204 ""
   (generated)
   "ppt_template.aux"

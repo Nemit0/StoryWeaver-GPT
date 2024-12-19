@@ -42,7 +42,7 @@ def main():
     tokenizer_path = './model/tokenizer_shakesphere.json'
     model_path = './model/checkpoints/gpt_model'
     data_path = './data/input.txt'
-    config_path = './logs/config_1.json'
+    config_path = './logs/config.json'
 
     tokenizer = load_tokenizer(tokenizer_path)
     vocab_size = len(tokenizer.token_map)

@@ -4,9 +4,49 @@ import torch.optim as optim
 import torch.nn.functional as F
 from typing import List, Optional
 from tqdm import tqdm
+from torch.utils.data import Dataset, DataLoader
+from torch.nn.utils.rnn import pad_sequence
 
 from .tokenizer import *
 from .torch_config import *
+
+def collate_fn(batch):
+    """
+    Pads input and target tensors to the maximum sequence length in the batch.
+    """
+    inputs, targets = zip(*batch)
+    
+    # Pad sequences with the tokenizer's padding token ID (assuming it's 0)
+    # Currently tid 0 maps to <BOT>, this should be changed.
+    # TODO: Retrain tokenizer appropriately, and update this code.
+    padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0)
+    padded_targets = pad_sequence(targets, batch_first=True, padding_value=0)
+    
+    return padded_inputs, padded_targets
+
+class InputOutputDataset(Dataset):
+    def __init__(self, input_texts: List[str], output_texts: List[str], tokenizer: BytePairTokenizer, max_length: int):
+        assert len(input_texts) == len(output_texts), "Input and output lengths must match."
+        self.inputs = [tokenizer.encode(text) for text in input_texts]
+        self.outputs = [tokenizer.encode(text) for text in output_texts]
+        self.max_length = max_length
+        self.sep_token = tokenizer.encode("\n\n")  # Define a separator token
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+        input_ids = self.inputs[idx]
+        output_ids = self.outputs[idx]
+        # Concatenate input and output with separator
+        combined = input_ids + self.sep_token + output_ids
+        # Truncate if necessary
+        if len(combined) > self.max_length:
+            combined = combined[:self.max_length]
+        
+        input_tensor = torch.tensor(combined[:-1])
+        target_tensor = torch.tensor(combined[1:])
+        return input_tensor, target_tensor
 
 class PositionalEncoding(nn.Module):
     def __init__(self, embed_size: int, max_len: int = 5000):
@@ -133,6 +173,48 @@ def train_model(model: nn.Module,
         avg_loss = epoch_loss / len(data)
         loss_history.append(avg_loss)
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
+        if torch.isnan(torch.tensor(avg_loss)):
+            print("Loss is NaN, stopping.")
+            break
+
+    return loss_history
+
+def train_finetune(model: nn.Module, 
+                  dataloader: DataLoader, 
+                  tokenizer: BytePairTokenizer,
+                  epochs: int, 
+                  lr: float = 1e-4) -> List[float]:
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    model.train()
+    loss_history = []
+
+    for epoch in tqdm(range(epochs), desc="Training Epochs"):
+        epoch_loss = 0.0
+        for inputs, targets in dataloader:
+            inputs = inputs.to(device)  # (batch_size, seq_len)
+            targets = targets.to(device)  # (batch_size, seq_len)
+
+            optimizer.zero_grad()
+            
+            seq_len = inputs.size(1)
+            attn_mask = generate_causal_mask(seq_len)  # [seq_len, seq_len]
+            
+            logits = model(inputs, attn_mask=attn_mask)  # (batch_size, seq_len, vocab_size)
+            
+            # Reshape for loss computation
+            logits = logits.reshape(-1, logits.size(-1))  # ((batch_size * seq_len), vocab_size)
+            targets = targets.view(-1)  # (batch_size * seq_len)
+            
+            loss = criterion(logits, targets)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        
+        avg_loss = epoch_loss / len(dataloader)
+        loss_history.append(avg_loss)
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
+        
         if torch.isnan(torch.tensor(avg_loss)):
             print("Loss is NaN, stopping.")
             break

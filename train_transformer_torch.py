@@ -55,7 +55,7 @@ def main():
         blocks = checkpoint.get('blocks', 2)
         lr = checkpoint.get('lr', 0.001)
 
-        model = GPT(vocab_size=vocab_size, 
+        model = GPTTorch(vocab_size=vocab_size, 
                     embed_size=embedding_dim, 
                     max_seq_len=max_seq_len, 
                     num_heads=heads, 
@@ -72,7 +72,7 @@ def main():
         lr = 0.001
         blocks = 2
         logging.info("Creating new model")
-        model = GPT(vocab_size=vocab_size, 
+        model = GPTTorch(vocab_size=vocab_size, 
                     embed_size=embedding_dim, 
                     max_seq_len=max_seq_len, 
                     num_heads=heads, 
